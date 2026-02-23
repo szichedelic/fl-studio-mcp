@@ -119,6 +119,16 @@ def OnInit():
         _protocol_loaded = True
 
         print("FL Bridge: Protocol modules loaded")
+
+        # Import handlers to register them
+        # This triggers registration of all command handlers
+        try:
+            from handlers import transport, state, patterns
+            print("FL Bridge: Handlers registered (transport, state, patterns)")
+        except ImportError as e:
+            print(f"FL Bridge: Warning - failed to load handlers: {e}")
+            # Continue anyway - protocol still works, just no handlers
+
         print("FL Bridge: Ready")
 
     except ImportError as e:
