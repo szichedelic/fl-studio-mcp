@@ -126,8 +126,8 @@ def OnInit():
         # Import handlers to register them
         # This triggers registration of all command handlers
         try:
-            from handlers import transport, state, patterns
-            print("FL Bridge: Handlers registered (transport, state, patterns)")
+            from handlers import transport, state, patterns, pianoroll
+            print("FL Bridge: Handlers registered (transport, state, patterns, pianoroll)")
         except ImportError as e:
             print(f"FL Bridge: Warning - failed to load handlers: {e}")
             # Continue anyway - protocol still works, just no handlers

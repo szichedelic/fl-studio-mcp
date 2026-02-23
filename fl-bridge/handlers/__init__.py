@@ -20,3 +20,4 @@ AUTHOR: FL Studio MCP Project
 from handlers import transport
 from handlers import state
 from handlers import patterns
+from handlers import pianoroll
