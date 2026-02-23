@@ -12,7 +12,7 @@ This roadmap delivers an MCP server enabling natural language control of FL Stud
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation & Communication** - MCP server + FL Bridge + reliable bidirectional communication
+- [x] **Phase 1: Foundation & Communication** - MCP server + FL Bridge + reliable bidirectional communication
 - [ ] **Phase 2: Note Generation Core** - Create notes, chords, melodies, bass lines from natural language
 - [ ] **Phase 3: Piano Roll Editing** - Edit existing notes in patterns
 - [ ] **Phase 4: Drum Patterns** - Generate drum patterns with groove
@@ -45,18 +45,18 @@ Plans:
 **Goal**: Users can create musical content from natural language descriptions
 **Depends on**: Phase 1
 **Requirements**: COMP-01, COMP-02, COMP-03, COMP-04, COMP-06
+**Plans**: 3 plans
 **Success Criteria** (what must be TRUE):
   1. User can say "create a C major chord progression" and notes appear in piano roll
   2. User can say "write a melancholic melody in A minor" and get appropriate notes
   3. User can say "add a bass line following the chords" and get bass notes
   4. User can specify a key/scale and all generated notes conform to it
   5. Generated notes are placed in the correct pattern with correct timing
-**Plans**: TBD
 
 Plans:
-- [ ] 02-01: Note creation via Piano Roll API
-- [ ] 02-02: Chord progression generation
-- [ ] 02-03: Melody + bass line generation with scale locking
+- [ ] 02-01-PLAN.md — Music theory engine (tonal library, scales, chords, melody/bass generators)
+- [ ] 02-02-PLAN.md — FL Bridge pianoroll handler + ComposeWithBridge.pyscript
+- [ ] 02-03-PLAN.md — MCP note tools wiring theory engine to FL Bridge
 
 ### Phase 3: Piano Roll Editing
 **Goal**: Users can edit existing notes in patterns
@@ -182,7 +182,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Communication | 0/3 | Planned | - |
+| 1. Foundation & Communication | 3/3 | Complete | 2026-02-23 |
 | 2. Note Generation Core | 0/3 | Not started | - |
 | 3. Piano Roll Editing | 0/1 | Not started | - |
 | 4. Drum Patterns | 0/1 | Not started | - |
