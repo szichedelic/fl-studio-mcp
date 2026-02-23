@@ -7,6 +7,7 @@
 
 import midi, { Input, Output } from 'midi';
 import { SysExCodec } from './sysex-codec.js';
+import { debugLog, isDebugEnabled } from './debug-logger.js';
 import type { FLCommand, FLResponse, PendingRequest, MidiPorts } from './types.js';
 
 /** Default timeout for pending requests in milliseconds */
@@ -119,9 +120,10 @@ export class MidiClient {
       this.output.openPort(outputIndex);
 
       this.connected = true;
-      console.error(
-        `[MidiClient] Connected: input=${this.input.getPortName(inputIndex)}, output=${this.output.getPortName(outputIndex)}`
-      );
+      const inName = this.input.getPortName(inputIndex);
+      const outName = this.output.getPortName(outputIndex);
+      console.error(`[MidiClient] Connected: input=${inName}, output=${outName}`);
+      debugLog(`Connected: input=${inName}, output=${outName}`);
       return true;
     } catch (error) {
       console.error(`[MidiClient] Connection failed:`, error);
@@ -155,6 +157,7 @@ export class MidiClient {
     return new Promise((resolve, reject) => {
       // Set up timeout
       const timeoutHandle = setTimeout(() => {
+        debugLog(`TIMEOUT [${clientId}] ${action} after ${timeout}ms`);
         this.pendingRequests.delete(clientId);
         reject(new Error(`Command timeout after ${timeout}ms: ${action}`));
       }, timeout);
@@ -168,8 +171,10 @@ export class MidiClient {
 
       // Send the message
       try {
+        debugLog(`TX [${clientId}] ${action} (${sysexMessage.length} bytes)`);
         this.output.sendMessage(sysexMessage);
       } catch (error) {
+        debugLog(`TX ERROR [${clientId}] ${action}: ${error}`);
         this.pendingRequests.delete(clientId);
         clearTimeout(timeoutHandle);
         reject(error);
@@ -191,6 +196,7 @@ export class MidiClient {
 
     try {
       const { clientId, data } = SysExCodec.decode(message);
+      debugLog(`RX [${clientId}] success=${data.success} (${message.length} bytes)`);
 
       // Find and resolve pending request
       const pending = this.pendingRequests.get(clientId);
@@ -199,9 +205,11 @@ export class MidiClient {
         clearTimeout(pending.timeout);
         pending.resolve(data);
       } else {
+        debugLog(`RX [${clientId}] WARNING: no pending request`);
         console.error(`[MidiClient] Received response for unknown clientId: ${clientId}`);
       }
     } catch (error) {
+      debugLog(`RX ERROR: ${error}`);
       console.error(`[MidiClient] Failed to decode message:`, error);
     }
   }

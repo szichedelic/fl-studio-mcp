@@ -120,6 +120,8 @@ Create `.mcp.json` in your project directory:
 |----------|-------------|---------|
 | `FL_PORT_TO_FL` | MIDI port for sending commands to FL Studio | `FL Bridge In` |
 | `FL_PORT_FROM_FL` | MIDI port for receiving responses from FL Studio | `FL Bridge Out` |
+| `FL_DEBUG` | Enable debug logging (`1` or `true`) | disabled |
+| `FL_DEBUG_FILE` | Custom path for debug log file | `./fl-studio-mcp-debug.log` |
 
 > Note: Use full path to `node` if using a version manager like fnm or nvm.
 
@@ -169,6 +171,20 @@ Once configured, Claude can control FL Studio:
 - Verify virtual MIDI ports are running
 - Check port names match exactly (case-sensitive)
 - Use full path to node.exe if using version managers
+
+### Debug Logging
+
+Enable debug logging to troubleshoot issues:
+
+```json
+"env": {
+  "FL_PORT_TO_FL": "FL Bridge In",
+  "FL_PORT_FROM_FL": "FL Bridge Out",
+  "FL_DEBUG": "1"
+}
+```
+
+Logs are written to `fl-studio-mcp-debug.log` with automatic rotation (max 1000 lines).
 
 ## Architecture
 
