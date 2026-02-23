@@ -72,28 +72,28 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUND-01 | — | Pending |
-| FOUND-02 | — | Pending |
-| FOUND-03 | — | Pending |
-| COMP-01 | — | Pending |
-| COMP-02 | — | Pending |
-| COMP-03 | — | Pending |
-| COMP-04 | — | Pending |
-| COMP-05 | — | Pending |
-| COMP-06 | — | Pending |
-| HUMAN-01 | — | Pending |
-| HUMAN-02 | — | Pending |
-| HUMAN-03 | — | Pending |
-| MIX-01 | — | Pending |
-| MIX-02 | — | Pending |
-| MIX-03 | — | Pending |
-| PIANO-01 | — | Pending |
-| PIANO-02 | — | Pending |
-| PIANO-03 | — | Pending |
-| ARR-01 | — | Pending |
-| PLUG-01 | — | Pending |
-| PLUG-02 | — | Pending |
-| PLUG-03 | — | Pending |
+| FOUND-01 | Phase 1 | Pending |
+| FOUND-02 | Phase 1 | Pending |
+| FOUND-03 | Phase 1 | Pending |
+| COMP-01 | Phase 2 | Pending |
+| COMP-02 | Phase 2 | Pending |
+| COMP-03 | Phase 2 | Pending |
+| COMP-04 | Phase 2 | Pending |
+| COMP-05 | Phase 4 | Pending |
+| COMP-06 | Phase 2 | Pending |
+| HUMAN-01 | Phase 5 | Pending |
+| HUMAN-02 | Phase 9 | Pending |
+| HUMAN-03 | Phase 9 | Pending |
+| MIX-01 | Phase 6 | Pending |
+| MIX-02 | Phase 6 | Pending |
+| MIX-03 | Phase 6 | Pending |
+| PIANO-01 | Phase 3 | Pending |
+| PIANO-02 | Phase 9 | Pending |
+| PIANO-03 | Phase 9 | Pending |
+| ARR-01 | Phase 10 | Pending |
+| PLUG-01 | Phase 7 | Pending |
+| PLUG-02 | Phase 8 | Pending |
+| PLUG-03 | Phase 8 | Pending |
 
 ---
-*Last updated: 2026-02-23 after requirements definition*
+*Last updated: 2026-02-23 after roadmap creation*
