@@ -26,10 +26,19 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+Desktop.ini
+ehthumbs.db
 
 # Logs
 *.log
 npm-debug.log*
+midi-debug.log
 
 # Test coverage
 coverage/
+
+# Local MCP config (contains user-specific paths)
+.mcp.json
+
+# Claude Code project memory
+.claude/

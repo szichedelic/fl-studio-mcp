@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "fl-studio": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["dist/index.js"],
+      "env": {
+        "FL_PORT_TO_FL": "FL Bridge In",
+        "FL_PORT_FROM_FL": "FL Bridge Out"
+      }
+    }
+  }
+}

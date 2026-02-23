@@ -20,8 +20,11 @@ const server = new McpServer({
 const connection = new ConnectionManager();
 
 // MIDI port names (can be overridden via environment variables)
-const MIDI_IN_PORT = process.env.FL_MIDI_OUT || 'FL Bridge Out';
-const MIDI_OUT_PORT = process.env.FL_MIDI_IN || 'FL Bridge In';
+// These are loopMIDI port names - named from FL Studio's perspective:
+//   "FL Bridge In"  = commands flow IN to FL Studio (MCP sends here)
+//   "FL Bridge Out" = responses flow OUT from FL Studio (MCP receives here)
+const MIDI_PORT_TO_FL = process.env.FL_PORT_TO_FL || process.env.FL_MIDI_OUT || 'FL Bridge In';
+const MIDI_PORT_FROM_FL = process.env.FL_PORT_FROM_FL || process.env.FL_MIDI_IN || 'FL Bridge Out';
 
 /**
  * Attempt to connect to FL Studio via MIDI
@@ -36,10 +39,10 @@ async function connectToFLStudio(): Promise<boolean> {
     console.error(`  Outputs: ${ports.outputs.join(', ') || 'none'}`);
 
     console.error(
-      `[fl-studio-mcp] Attempting MIDI connection (in: ${MIDI_IN_PORT}, out: ${MIDI_OUT_PORT})`
+      `[fl-studio-mcp] Attempting MIDI connection (from FL: ${MIDI_PORT_FROM_FL}, to FL: ${MIDI_PORT_TO_FL})`
     );
 
-    const success = await connection.connect(MIDI_IN_PORT, MIDI_OUT_PORT);
+    const success = await connection.connect(MIDI_PORT_FROM_FL, MIDI_PORT_TO_FL);
 
     if (success) {
       console.error('[fl-studio-mcp] Connected to FL Studio via MIDI');
