@@ -5,67 +5,54 @@
 See: .planning/PROJECT.md (updated 2026-02-23)
 
 **Core value:** Natural language to human-sounding music in FL Studio
-**Current focus:** Phase 1 - Foundation & Communication
+**Current focus:** Phase 2 - Note Generation Core
 
 ## Current Position
 
-Phase: 1 of 10 (Foundation & Communication)
-Plan: 2 of 3 in current phase (01-01, 01-02 complete)
+Phase: 2 of 10 (Note Generation Core)
+Plan: 02-02 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-23 - Completed 01-01-PLAN.md (MCP Server & Bridge)
 
-Progress: [##--------] 20%
+Progress: [####------] 40%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: ~8 min
-- Total execution time: ~19 min
+- Total plans completed: 4
+- Average duration: ~17 min
+- Total execution time: ~67 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01 | 2 | ~19 min | ~10 min |
-
-**Recent Trend:**
-- Last 5 plans: 01-02 (4 min), 01-01 (11 min)
-- Trend: Stable
-
-*Updated after each plan completion*
+| 01 | 3 | ~64 min | ~21 min |
+| 02 | 1 | ~3 min | ~3 min |
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- [Roadmap]: FL Studio has no external API - using MIDI SysEx via virtual MIDI ports (Flapi architecture)
-- [Roadmap]: Threading broken in FL Studio Python - must be event-driven, no concurrency
-- [Roadmap]: Piano Roll API only works when piano roll is open - need fallback strategies
-- [Roadmap]: VST parameter reading unreliable - maintaining shadow state for parameters
-- [Roadmap]: Humanization requires brownian noise, not white noise, for realistic timing
-- [01-02]: Manufacturer ID 0x7D (non-commercial) for SysEx messages
-- [01-02]: Base64 encoding for JSON payloads to ensure 7-bit safety
-- [01-02]: Response queue with one-per-tick processing to prevent blocking
-- [01-01]: Used node-midi (RtMidi wrapper) for cross-platform MIDI
-- [01-01]: ES modules with NodeNext resolution for TypeScript
-- [01-01]: Singleton ConnectionManager for easy tool access
-
-### Pending Todos
-
-None yet.
+- [Phase 1]: Single loopMIDI port can work but dual ports (FL Bridge In/Out) are cleaner
+- [Phase 1]: Port numbers must match between Input and Output in FL Studio MIDI settings
+- [Phase 1]: OnIdle not reliable — send responses immediately in OnSysEx
+- [Phase 1]: device.midiOutSysex() takes 1 argument only
+- [Phase 1]: Script needs `# name=` metadata comment on line 1
+- [Phase 1]: Env vars renamed to FL_PORT_TO_FL / FL_PORT_FROM_FL
+- [Phase 2]: JSON file-based IPC between FL Bridge handler and .pyscript (only viable approach)
+- [Phase 2]: Note timing in beats (quarter notes) in JSON, converted to ticks via PPQ at runtime
+- [Phase 2]: Velocity as 0.0-1.0 float (FL Studio native) not 0-127 MIDI
+- [Phase 2]: createDialog() entry point for piano roll scripts (FL Studio convention)
 
 ### Blockers/Concerns
 
-- [Phase 1]: Virtual MIDI port setup (loopMIDI on Windows) requires user configuration
-- [Phase 5]: Humanization research spike needed before implementation (brownian noise patterns, velocity curves)
+- [Phase 2]: Piano Roll API only works when piano roll is open — need fallback strategies
+- [Phase 2]: ComposeWithBridge.pyscript must be manually copied to FL Studio Piano roll scripts directory
+- [Phase 5]: Humanization research spike needed before implementation
 - [Phase 7-8]: VST parameter discovery for Serum 2 and AD2 requires dedicated research
 
 ## Session Continuity
 
-Last session: 2026-02-23T15:48:58Z
-Stopped at: Completed 01-01-PLAN.md (MCP Server & Bridge)
-Resume file: .planning/phases/01-foundation-communication/01-03-PLAN.md
+Last session: 2026-02-23T23:06:43Z
+Stopped at: Completed 02-02-PLAN.md (FL Bridge pianoroll handler + ComposeWithBridge.pyscript)
+Resume file: None
