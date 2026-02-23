@@ -10,13 +10,18 @@
     "dev": "tsx src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["mcp", "fl-studio", "midi", "music-production"],
+  "keywords": [
+    "mcp",
+    "fl-studio",
+    "midi",
+    "music-production"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
     "midi": "^2.0.0",
-    "zod": "^3.23.0"
+    "zod": "^3.25.30"
   },
   "devDependencies": {
     "@types/node": "^25.3.0",
