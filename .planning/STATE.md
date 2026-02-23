@@ -12,22 +12,23 @@ See: .planning/PROJECT.md (updated 2026-02-23)
 Phase: 2 of 10 (Note Generation Core)
 Plan: 02-02 of 3 in current phase
 Status: In progress
+Last activity: 2026-02-23 - Completed 02-01-PLAN.md
 
 Progress: [####------] 40%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
-- Average duration: ~17 min
-- Total execution time: ~67 min
+- Total plans completed: 5
+- Average duration: ~14 min
+- Total execution time: ~74 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 | 3 | ~64 min | ~21 min |
-| 02 | 1 | ~3 min | ~3 min |
+| 02 | 2 | ~10 min | ~5 min |
 
 ## Accumulated Context
 
@@ -43,6 +44,7 @@ Progress: [####------] 40%
 - [Phase 2]: Note timing in beats (quarter notes) in JSON, converted to ticks via PPQ at runtime
 - [Phase 2]: Velocity as 0.0-1.0 float (FL Studio native) not 0-127 MIDI
 - [Phase 2]: createDialog() entry point for piano roll scripts (FL Studio convention)
+- [Phase 2]: Tonal chroma is root-relative, not C-relative -- isInScale must offset by root chroma
 
 ### Blockers/Concerns
 
@@ -53,6 +55,6 @@ Progress: [####------] 40%
 
 ## Session Continuity
 
-Last session: 2026-02-23T23:06:43Z
-Stopped at: Completed 02-02-PLAN.md (FL Bridge pianoroll handler + ComposeWithBridge.pyscript)
+Last session: 2026-02-23T23:10:19Z
+Stopped at: Completed 02-01-PLAN.md (music theory engine)
 Resume file: None
