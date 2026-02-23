@@ -11,6 +11,7 @@ import type { ConnectionManager } from '../bridge/connection.js';
 import { registerTransportTools } from './transport.js';
 import { registerStateTools } from './state.js';
 import { registerPatternTools } from './patterns.js';
+import { registerNoteTools } from './notes.js';
 
 /**
  * Register all MCP tools with the server
@@ -25,6 +26,7 @@ export function registerTools(
   registerTransportTools(server, connection);
   registerStateTools(server, connection);
   registerPatternTools(server, connection);
+  registerNoteTools(server, connection);
 
-  console.error('[fl-studio-mcp] Registered tools: transport, state, patterns');
+  console.error('[fl-studio-mcp] Registered tools: transport, state, patterns, notes');
 }
