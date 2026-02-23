@@ -1,0 +1,219 @@
+"""
+ComposeWithBridge - FL Studio Piano Roll Script
+
+Reads note data written by the FL Bridge MCP handler and creates
+notes in the currently open piano roll.
+
+INSTALLATION:
+=============
+Copy this file to:
+  Documents/Image-Line/FL Studio/Settings/Piano roll scripts/
+
+USAGE:
+======
+1. MCP server sends notes via SysEx -> FL Bridge writes note_request.json
+2. Open the Piano Roll for the target channel
+3. Run this script: Piano Roll > Tools menu > Scripting > ComposeWithBridge
+
+DATA FORMAT (note_request.json):
+================================
+{
+  "action": "add_notes",
+  "clearFirst": false,
+  "notes": [
+    {
+      "midi": 60,        // MIDI note number (0-127, 60 = middle C)
+      "time": 0.0,       // Start time in beats (quarter notes)
+      "duration": 1.0,   // Length in beats (quarter notes)
+      "velocity": 0.8,   // 0.0 - 1.0
+      "pan": 0.5,        // 0.0 - 1.0 (0.5 = center)
+      "color": 0         // 0 - 15 (FL Studio note color)
+    }
+  ]
+}
+
+AUTHOR: FL Studio MCP Project
+"""
+
+import flpianoroll as flp
+import json
+import os
+
+
+# ===========================================================================
+# DATA DIRECTORY
+# ===========================================================================
+# The FL Bridge handler writes note_request.json to its shared/ directory.
+# When installed, the FL Bridge lives at:
+#   Documents/Image-Line/FL Studio/Settings/Hardware/fl-bridge/
+# So the shared directory is:
+#   Documents/Image-Line/FL Studio/Settings/Hardware/fl-bridge/shared/
+
+# Primary path: standard FL Studio hardware script location
+DATA_DIR = os.path.join(
+    os.path.expanduser("~"),
+    "Documents", "Image-Line", "FL Studio", "Settings",
+    "Hardware", "fl-bridge", "shared"
+)
+
+# Fallback: check relative to this script's location
+# (in case fl-bridge is installed in a non-standard location)
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_FALLBACK_DIR = os.path.join(_SCRIPT_DIR, "..", "Hardware", "fl-bridge", "shared")
+
+
+def _get_data_dir():
+    """Return the shared data directory, using fallback if primary doesn't exist."""
+    if os.path.isdir(DATA_DIR):
+        return DATA_DIR
+    if os.path.isdir(_FALLBACK_DIR):
+        return _FALLBACK_DIR
+    # Default to primary even if it doesn't exist yet
+    return DATA_DIR
+
+
+# ===========================================================================
+# SCRIPT ENTRY POINTS
+# ===========================================================================
+
+def createDialog():
+    """
+    Create the script dialog (required entry point).
+
+    Returns an empty dialog since we don't need user input --
+    all data comes from the JSON file written by FL Bridge.
+    """
+    form = flp.ScriptDialog(
+        "ComposeWithBridge",
+        "Apply notes from MCP server.\r\n"
+        "Reads note_request.json from the FL Bridge shared directory."
+    )
+    return form
+
+
+def apply(form):
+    """
+    Main entry point -- called when the user runs this script.
+
+    Reads note_request.json from the shared data directory,
+    creates notes in the piano roll, then exports the current
+    piano roll state back to JSON for the MCP server to read.
+    """
+    data_dir = _get_data_dir()
+    request_path = os.path.join(data_dir, "note_request.json")
+
+    # Check for pending request
+    if not os.path.exists(request_path):
+        flp.Utils.ShowMessage("No pending note request found.\n\n"
+                              "Use the MCP server to send notes first,\n"
+                              "then run this script to apply them.")
+        return
+
+    # Read the request
+    try:
+        with open(request_path, "r") as f:
+            request = json.load(f)
+    except Exception as e:
+        flp.Utils.ShowMessage("Error reading note request:\n" + str(e))
+        return
+
+    # Get PPQ (ticks per quarter note) for time conversion
+    ppq = flp.score.PPQ
+
+    action = request.get("action", "")
+
+    # ----- Handle "clear" action -----
+    if action == "clear":
+        _clear_all_notes()
+
+    # ----- Handle "add_notes" action -----
+    elif action == "add_notes":
+        # Clear first if requested
+        if request.get("clearFirst", False):
+            _clear_all_notes()
+
+        # Add each note
+        notes_data = request.get("notes", [])
+        for note_data in notes_data:
+            note = flp.Note()
+            note.number = int(note_data["midi"])
+            note.time = int(note_data["time"] * ppq)
+            note.length = int(note_data["duration"] * ppq)
+            note.velocity = float(note_data.get("velocity", 0.78))
+            note.pan = float(note_data.get("pan", 0.5))
+            note.color = int(note_data.get("color", 0))
+            flp.score.addNote(note)
+
+    else:
+        flp.Utils.ShowMessage("Unknown action: " + action)
+        return
+
+    # Clean up the request file after processing
+    try:
+        os.remove(request_path)
+    except Exception:
+        pass  # Non-critical if cleanup fails
+
+    # Export current piano roll state for MCP to read
+    _export_state(data_dir)
+
+
+# ===========================================================================
+# HELPER FUNCTIONS
+# ===========================================================================
+
+def _clear_all_notes():
+    """
+    Clear all notes from the current piano roll.
+
+    Uses flp.score.clearNotes() if available, otherwise deletes
+    notes in reverse order as a fallback.
+    """
+    try:
+        # Try the direct API first (FL Studio 21.1+)
+        flp.score.clearNotes(False)  # False = clear all, not just selected
+    except (AttributeError, TypeError):
+        # Fallback: delete all notes in reverse order to avoid index shifting
+        for i in range(flp.score.noteCount - 1, -1, -1):
+            flp.score.deleteNote(i)
+
+
+def _export_state(data_dir):
+    """
+    Export the current piano roll state to JSON for MCP server awareness.
+
+    Writes piano_roll_state.json with all notes and timing info.
+
+    Args:
+        data_dir: Path to the shared data directory
+    """
+    ppq = flp.score.PPQ
+    notes = []
+
+    for i in range(flp.score.noteCount):
+        n = flp.score.getNote(i)
+        notes.append({
+            "midi": n.number,
+            "time": n.time / ppq,
+            "duration": n.length / ppq,
+            "velocity": n.velocity,
+            "pan": n.pan,
+            "selected": n.selected,
+            "color": n.color,
+        })
+
+    state = {
+        "ppq": ppq,
+        "noteCount": flp.score.noteCount,
+        "tsnum": flp.score.tsnum,
+        "tsden": flp.score.tsden,
+        "notes": notes,
+    }
+
+    state_path = os.path.join(data_dir, "piano_roll_state.json")
+    try:
+        os.makedirs(data_dir, exist_ok=True)
+        with open(state_path, "w") as f:
+            json.dump(state, f, indent=2)
+    except Exception:
+        pass  # Non-critical if state export fails
