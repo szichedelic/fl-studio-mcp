@@ -71,8 +71,9 @@ export function snapToScale(
 /**
  * Check if a MIDI note belongs to the given scale.
  *
- * Compares the note's pitch class (chroma) against the scale's chroma bitfield.
- * Tonal's chroma string is 12 characters where index 0 = C, 1 = C#, etc.
+ * Compares the note's pitch class against the scale's chroma bitfield.
+ * Tonal's chroma string is relative to the scale root (index 0 = root note),
+ * so we compute the MIDI note's semitone offset from the root before lookup.
  *
  * @param midiNote - MIDI note number to check (0-127)
  * @param root - Scale root note (e.g., "C", "A", "F#")
@@ -83,6 +84,7 @@ export function snapToScale(
  * isInScale(60, "C", "major") // true  (C is in C major)
  * isInScale(61, "C", "major") // false (C# is not in C major)
  * isInScale(62, "C", "major") // true  (D is in C major)
+ * isInScale(69, "A", "minor") // true  (A is in A minor)
  */
 export function isInScale(
   midiNote: number,
@@ -94,9 +96,14 @@ export function isInScale(
     return false;
   }
 
-  const noteChroma = midiNote % 12;
-  // Tonal chroma string: index 0 = C, 1 = C#, 2 = D, ... 11 = B
-  return scale.chroma[noteChroma] === '1';
+  const rootChroma = Note.chroma(root);
+  if (rootChroma === undefined) {
+    return false;
+  }
+
+  // Calculate semitone offset from root (chroma is relative to root)
+  const relativeChroma = ((midiNote % 12) - rootChroma + 12) % 12;
+  return scale.chroma[relativeChroma] === '1';
 }
 
 /**
