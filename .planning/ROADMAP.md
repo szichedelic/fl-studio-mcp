@@ -29,17 +29,17 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Goal**: Establish reliable bidirectional communication between MCP client and FL Studio
 **Depends on**: Nothing (first phase)
 **Requirements**: FOUND-01, FOUND-02, FOUND-03
+**Plans**: 3 plans
 **Success Criteria** (what must be TRUE):
   1. User can start MCP server and it connects to FL Studio without errors
   2. User can control transport (play/stop/record) via natural language
   3. User can query current project state (patterns, tracks, mixer channels) and get accurate response
   4. User can select and create patterns via natural language
-**Plans**: TBD
 
 Plans:
-- [ ] 01-01: MCP server scaffolding + virtual MIDI setup
-- [ ] 01-02: FL Bridge Python script with safe initialization
-- [ ] 01-03: Transport control + state reading + pattern operations
+- [ ] 01-01-PLAN.md — MCP server scaffolding + SysEx codec + MIDI client
+- [ ] 01-02-PLAN.md — FL Bridge Python script with safe initialization
+- [ ] 01-03-PLAN.md — Transport control + state reading + pattern operations
 
 ### Phase 2: Note Generation Core
 **Goal**: Users can create musical content from natural language descriptions
@@ -182,7 +182,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Communication | 0/3 | Not started | - |
+| 1. Foundation & Communication | 0/3 | Planned | - |
 | 2. Note Generation Core | 0/3 | Not started | - |
 | 3. Piano Roll Editing | 0/1 | Not started | - |
 | 4. Drum Patterns | 0/1 | Not started | - |
