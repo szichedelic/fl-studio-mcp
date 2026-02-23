@@ -40,5 +40,6 @@ coverage/
 # Local MCP config (contains user-specific paths)
 .mcp.json
 
-# Claude Code project memory
-.claude/
+# Claude Code project memory (but keep commands for contributors)
+.claude/*
+!.claude/commands/
