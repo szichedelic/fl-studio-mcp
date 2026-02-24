@@ -14,6 +14,7 @@ import { registerPatternTools } from './patterns.js';
 import { registerNoteTools } from './notes.js';
 import { registerHumanizeTools } from './humanize.js';
 import { registerPluginTools } from './plugins.js';
+import { registerSerumTools } from './serum.js';
 
 /**
  * Register all MCP tools with the server
@@ -31,6 +32,7 @@ export function registerTools(
   registerNoteTools(server, connection);
   registerHumanizeTools(server, connection);
   registerPluginTools(server, connection);
+  registerSerumTools(server, connection);
 
-  console.error('[fl-studio-mcp] Registered tools: transport, state, patterns, notes, humanize, plugins');
+  console.error('[fl-studio-mcp] Registered tools: transport, state, patterns, notes, humanize, plugins, serum');
 }
