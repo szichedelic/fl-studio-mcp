@@ -132,6 +132,13 @@ def OnInit():
             print(f"FL Bridge: Warning - failed to load handlers: {e}")
             # Continue anyway - protocol still works, just no handlers
 
+        # Import plugin handlers (created in Plan 02, may not exist yet)
+        try:
+            from handlers import plugins
+            print("FL Bridge: Plugin handlers registered")
+        except ImportError:
+            print("FL Bridge: Plugin handlers not yet available")
+
         print("FL Bridge: Ready")
 
     except ImportError as e:
@@ -245,16 +252,20 @@ def OnSysEx(event):
         print(f"FL Bridge: Command result: {result}")
 
         # Send response immediately (OnIdle not being called reliably)
+        # Use chunked sending to handle large payloads (e.g., plugin parameter lists)
         try:
-            sysex_bytes = _sysex.build_sysex_response(
+            chunks = _sysex.build_chunked_sysex_response(
                 client_id=parsed['client_id'],
                 response=result,
                 success=result.get('success', True)
             )
-            print(f"FL Bridge: Built response, length: {len(sysex_bytes)}")
+            print(f"FL Bridge: Built response, {len(chunks)} chunk(s)")
 
-            # Send response on same port (bidirectional single-port setup)
-            device.midiOutSysex(bytes(sysex_bytes))
+            # Send each chunk on same port (bidirectional single-port setup)
+            for i, chunk in enumerate(chunks):
+                device.midiOutSysex(bytes(chunk))
+                print(f"FL Bridge: Chunk {i+1}/{len(chunks)} sent ({len(chunk)} bytes)")
+
             print(f"FL Bridge: Response sent!")
         except Exception as send_err:
             print(f"FL Bridge: Failed to send response: {send_err}")

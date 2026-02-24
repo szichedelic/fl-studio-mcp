@@ -51,6 +51,10 @@ MSG_TYPE_RESPONSE = 0x02
 STATUS_OK = 0x00
 STATUS_ERROR = 0x01
 
+# Chunking limits
+# Conservative: 2048 RtMidi buffer - 8 header/footer bytes - safety margin
+MAX_PAYLOAD_BYTES = 1800
+
 
 # ============================================================================
 # PUBLIC FUNCTIONS
@@ -235,6 +239,85 @@ def build_sysex_response(
             *error_payload,
             SYSEX_END
         ]
+
+
+def build_chunked_sysex_response(
+    client_id: int,
+    response: Dict[str, Any],
+    success: bool = True
+) -> List[List[int]]:
+    """
+    Build one or more SysEx messages for a response, chunking if the payload
+    exceeds MAX_PAYLOAD_BYTES.
+
+    This is the preferred way to send responses, as it transparently handles
+    payloads that would exceed the node-midi 2048-byte RtMidi buffer limit.
+    Small responses produce exactly one message (identical to build_sysex_response).
+
+    Args:
+        client_id: Correlation ID from the original command
+        response: Response dictionary to send
+        success: True if operation succeeded, False if error
+
+    Returns:
+        list: List of SysEx messages (each a list of integers).
+              Single-chunk responses return a list with one message.
+              Multi-chunk responses have continuation=0x01 on all but the last.
+
+    Example:
+        >>> chunks = build_chunked_sysex_response(1, {'success': True, 'data': 'test'})
+        >>> for chunk in chunks:
+        ...     device.midiOutSysex(bytes(chunk))
+    """
+    try:
+        # JSON encode the response
+        json_str = json.dumps(response)
+        json_bytes = json_str.encode('utf-8')
+
+        # Base64 encode for 7-bit safety
+        base64_str = base64.b64encode(json_bytes).decode('ascii')
+
+        status_byte = STATUS_OK if success else STATUS_ERROR
+
+        # Split into chunks if needed
+        chunks = []
+        for i in range(0, len(base64_str), MAX_PAYLOAD_BYTES):
+            chunk_payload = base64_str[i:i + MAX_PAYLOAD_BYTES]
+            is_last = (i + MAX_PAYLOAD_BYTES >= len(base64_str))
+            continuation = 0x00 if is_last else 0x01
+
+            message = [
+                SYSEX_START,           # F0
+                MANUFACTURER_ID,       # 7D
+                ORIGIN_SERVER,         # 0x01 (from FL Bridge)
+                client_id & 0x7F,      # Ensure 7-bit
+                continuation,          # 0x01=more chunks, 0x00=final
+                MSG_TYPE_RESPONSE,     # 0x02
+                status_byte,
+                *[ord(c) for c in chunk_payload],
+                SYSEX_END              # F7
+            ]
+            chunks.append(message)
+
+        return chunks
+
+    except Exception as e:
+        # If building fails, return a minimal error response as single chunk
+        error_json = json.dumps({'success': False, 'error': str(e)})
+        error_b64 = base64.b64encode(error_json.encode('utf-8')).decode('ascii')
+        error_payload = [ord(c) for c in error_b64]
+
+        return [[
+            SYSEX_START,
+            MANUFACTURER_ID,
+            ORIGIN_SERVER,
+            client_id & 0x7F,
+            0x00,
+            MSG_TYPE_RESPONSE,
+            STATUS_ERROR,
+            *error_payload,
+            SYSEX_END
+        ]]
 
 
 def build_sysex_command(
