@@ -88,11 +88,12 @@ Plans:
   2. User can say "create a warm pad" and get a multi-parameter recipe applied that produces an appropriate sound
   3. User can request parameter changes using approximate names and fuzzy matching finds the right parameter
   4. User can browse and load Serum 2 presets via natural language
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 05-01: TBD
-- [ ] 05-02: TBD
+- [ ] 05-01-PLAN.md -- Runtime discovery spike + Serum types and semantic alias map
+- [ ] 05-02-PLAN.md -- Sound design recipes and preset browsing (filesystem + FL Bridge)
+- [ ] 05-03-PLAN.md -- MCP Serum tools wiring (set_param, apply_recipe, browse_presets, next/prev_preset, list_recipes)
 
 ### Phase 6: Audio Rendering Workflow
 **Goal**: Users can render MIDI patterns to WAV files with a seamless guided workflow
