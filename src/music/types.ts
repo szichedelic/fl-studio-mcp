@@ -96,3 +96,63 @@ export interface AddNotesRequest {
   /** Whether to clear existing notes before adding (optional) */
   clearFirst?: boolean;
 }
+
+// ── Humanization Types ────────────────────────────────────────────────
+
+export interface TimingDriftParams {
+  enabled?: boolean;
+  /** Mean reversion speed (0.1=slow drift, 0.9=tight). Default 0.5 */
+  theta?: number;
+  /** Drift magnitude in beats (0.001=subtle, 0.03=loose). Default 0.008 */
+  sigma?: number;
+  /** Scale sigma by local note density. Default false */
+  contextAware?: boolean;
+}
+
+export interface SwingParams {
+  enabled?: boolean;
+  /** Swing amount 50 (none) to 75 (max). 66 = triplet feel. Default 50 */
+  amount?: number;
+  /** Grid subdivision: 0.25 = 16ths, 0.5 = 8ths. Default 0.25 */
+  gridSize?: number;
+}
+
+export interface VelocityParams {
+  enabled?: boolean;
+  /** Instrument profile for velocity shaping */
+  instrument?: 'drums' | 'piano' | 'bass' | 'synth' | 'default';
+  /** Overall variation amount 0-1. Default 0.5 */
+  amount?: number;
+  /** Emphasize downbeats. Default true */
+  beatEmphasis?: boolean;
+}
+
+export interface NoteLengthParams {
+  enabled?: boolean;
+  /** Variation amount 0-1. Default 0.3 */
+  amount?: number;
+  /** Downbeats slightly longer (legato). Default true */
+  downbeatLegato?: boolean;
+}
+
+export type HumanizationPreset = 'tight' | 'loose' | 'jazz' | 'lo-fi';
+
+export interface HumanizationParams {
+  /** Optional seed for reproducible results. Auto-generated if omitted */
+  seed?: string;
+  /** Named preset (overrides individual params) */
+  preset?: HumanizationPreset;
+  timing?: TimingDriftParams;
+  velocity?: VelocityParams;
+  swing?: SwingParams;
+  noteLength?: NoteLengthParams;
+}
+
+/** Result from humanize() -- notes plus metadata */
+export interface HumanizationResult {
+  notes: NoteData[];
+  /** The seed used (for reproducibility) */
+  seed: string;
+  /** Which transforms were applied */
+  applied: string[];
+}
