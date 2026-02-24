@@ -72,11 +72,12 @@ Plans:
   2. User can set any VST parameter by its name (e.g., "set Filter Cutoff to 75%") and the plugin responds
   3. User can read parameter values reliably even when FL Studio's getParamValue is buggy (shadow state fills the gap)
   4. Parameter name resolution survives plugin version updates (name-based, not index-based)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
+- [ ] 04-01-PLAN.md -- SysEx response chunking (Python send-side + TypeScript receive-side)
+- [ ] 04-02-PLAN.md -- Python plugin handlers + TypeScript param cache and shadow state
+- [ ] 04-03-PLAN.md -- MCP plugin tools wiring (discover, get, set by name)
 
 ### Phase 5: Serum 2 Sound Design
 **Goal**: Users can create and shape sounds in Serum 2 using musical language, not parameter indices
@@ -131,12 +132,12 @@ Phases execute in numeric order: 3 -> 4 -> 5 -> 6 -> 7
 | 1. Foundation & Communication | v1.0 | 3/3 | Complete | 2026-02-23 |
 | 2. Note Generation Core | v1.0 | 3/3 | Complete | 2026-02-23 |
 | 3. Humanization Engine | v2.0 | 3/3 | Complete | 2026-02-24 |
-| 4. Generic Plugin Control | v2.0 | 0/TBD | Not started | - |
+| 4. Generic Plugin Control | v2.0 | 0/3 | Planned | - |
 | 5. Serum 2 Sound Design | v2.0 | 0/TBD | Not started | - |
 | 6. Audio Rendering Workflow | v2.0 | 0/TBD | Not started | - |
 | 7. Sample Manipulation | v2.0 | 0/TBD | Not started | - |
 
 ---
 *Created: 2026-02-23 (v1.0 phases)*
-*Updated: 2026-02-24 (Phase 3 complete)*
+*Updated: 2026-02-24 (Phase 4 planned)*
 *v2.0 requirements: 20 | v2.0 phases: 5 | Depth: comprehensive*
