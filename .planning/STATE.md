@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-23)
 
 **Core value:** Natural language to human-sounding music in FL Studio
-**Current focus:** Phase 3 - Humanization Engine
+**Current focus:** Phase 3 complete, ready for Phase 4
 
 ## Current Position
 
 Phase: 3 of 7 (Humanization Engine)
-Plan: 2 of 3 (Velocity, Note-Length, Presets)
-Status: In progress
-Last activity: 2026-02-24 - Completed 03-02-PLAN.md
+Plan: 3 of 3 (Pipeline + MCP Tools)
+Status: Phase complete
+Last activity: 2026-02-24 - Completed 03-03-PLAN.md
 
-Progress: [#######░░░] 67% (v1.0 complete, 03-01 + 03-02 done)
+Progress: [########░░] 75% (v1.0 complete, Phase 3 complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: ~10 min
-- Total execution time: ~79 min
+- Total plans completed: 9
+- Average duration: ~9 min
+- Total execution time: ~82 min
 
 **By Phase:**
 
@@ -29,7 +29,7 @@ Progress: [#######░░░] 67% (v1.0 complete, 03-01 + 03-02 done)
 |-------|-------|-------|----------|
 | 01 | 3 | ~64 min | ~21 min |
 | 02 | 3 | ~10 min | ~3 min |
-| 03 | 2 | ~5 min | ~2.5 min |
+| 03 | 3 | ~8 min | ~2.7 min |
 
 ## Accumulated Context
 
@@ -49,6 +49,9 @@ Progress: [#######░░░] 67% (v1.0 complete, 03-01 + 03-02 done)
 - [03-02]: Drums dual-path velocity: ghost clamping below threshold, accent blending above midpoint
 - [03-02]: Note-length variation hard-capped at +-30% regardless of amount parameter
 - [03-02]: Presets deep-copied via JSON.parse/stringify so callers can safely mutate
+- [03-03]: Preset deep-merge: per-field explicit overrides win over preset defaults
+- [03-03]: timing_amount 0-1 maps to sigma 0.001-0.025 for user-friendly control
+- [03-03]: humanize param on generators but NOT on add_notes (use humanize_notes instead)
 
 ### Blockers/Concerns
 
@@ -60,5 +63,5 @@ Progress: [#######░░░] 67% (v1.0 complete, 03-01 + 03-02 done)
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 03-02-PLAN.md (velocity, note-length, presets)
+Stopped at: Completed 03-03-PLAN.md (pipeline + MCP tools) — Phase 3 complete
 Resume file: None
