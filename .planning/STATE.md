@@ -5,16 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-23)
 
 **Core value:** Natural language to human-sounding music in FL Studio
-**Current focus:** Phase 2 - Note Generation Core
+**Current focus:** Milestone v2.0 — Production Pipeline (defining requirements)
 
 ## Current Position
 
-Phase: 2 of 10 (Note Generation Core)
-Plan: 02-02 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-23 - Completed 02-01-PLAN.md
-
-Progress: [####------] 40%
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-23 — Milestone v2.0 started
 
 ## Performance Metrics
 
@@ -34,27 +32,30 @@ Progress: [####------] 40%
 
 ### Decisions
 
-- [Phase 1]: Single loopMIDI port can work but dual ports (FL Bridge In/Out) are cleaner
-- [Phase 1]: Port numbers must match between Input and Output in FL Studio MIDI settings
-- [Phase 1]: OnIdle not reliable — send responses immediately in OnSysEx
-- [Phase 1]: device.midiOutSysex() takes 1 argument only
-- [Phase 1]: Script needs `# name=` metadata comment on line 1
-- [Phase 1]: Env vars renamed to FL_PORT_TO_FL / FL_PORT_FROM_FL
-- [Phase 2]: JSON file-based IPC between FL Bridge handler and .pyscript (only viable approach)
-- [Phase 2]: Note timing in beats (quarter notes) in JSON, converted to ticks via PPQ at runtime
-- [Phase 2]: Velocity as 0.0-1.0 float (FL Studio native) not 0-127 MIDI
-- [Phase 2]: createDialog() entry point for piano roll scripts (FL Studio convention)
-- [Phase 2]: Tonal chroma is root-relative, not C-relative -- isInScale must offset by root chroma
+- [v1.0]: Single loopMIDI port for bidirectional communication
+- [v1.0]: Port numbers must match between Input and Output in FL Studio MIDI settings
+- [v1.0]: OnIdle not reliable — send responses immediately in OnSysEx
+- [v1.0]: device.midiOutSysex() takes 1 argument only
+- [v1.0]: Script needs `# name=` metadata comment on line 1
+- [v1.0]: Env vars renamed to FL_PORT_TO_FL / FL_PORT_FROM_FL
+- [v1.0]: Note timing in beats (quarter notes), converted to ticks via PPQ at runtime
+- [v1.0]: Velocity as 0.0-1.0 float (FL Studio native)
+- [v1.0]: Tonal chroma is root-relative, not C-relative
+- [v1.0]: Embedded .pyscript approach — Node.js writes note data as Python literals
+- [v1.0]: FL Studio piano roll subinterpreter has NO file I/O (open, os.open, os.popen all fail)
+- [v1.0]: MIDI controller script CAN write files via __file__-relative paths but NOT to sibling directories
+- [v1.0]: os.environ[]=... (putenv) fails in both MIDI scripts and .pyscripts
 
 ### Blockers/Concerns
 
-- [Phase 2]: Piano Roll API only works when piano roll is open — need fallback strategies
-- [Phase 2]: ComposeWithBridge.pyscript must be manually copied to FL Studio Piano roll scripts directory
-- [Phase 5]: Humanization research spike needed before implementation
-- [Phase 7-8]: VST parameter discovery for Serum 2 and AD2 requires dedicated research
+- Piano Roll API only works when piano roll is open — need fallback strategies
+- ComposeWithBridge.pyscript requires manual trigger (user clicks script in Tools menu)
+- FL Studio plugin parameter API needs hands-on research (getParamValue may be broken)
+- Audio rendering programmatic control needs discovery
+- Sample loading into channels needs discovery
 
 ## Session Continuity
 
-Last session: 2026-02-23T23:10:19Z
-Stopped at: Completed 02-01-PLAN.md (music theory engine)
+Last session: 2026-02-23
+Stopped at: Milestone v2.0 initialization
 Resume file: None
