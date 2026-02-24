@@ -56,11 +56,12 @@ Plans:
   3. User can apply swing (50-75%) and hear groove shift on off-beat notes
   4. User can get context-aware humanization where fast passages stay tight and slow passages breathe more
   5. User can select named presets ("tight", "loose", "jazz", "lo-fi") and hear distinctly different humanization character
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
+- [ ] 03-01-PLAN.md -- Types, utilities, swing engine, and O-U timing drift
+- [ ] 03-02-PLAN.md -- Velocity profiles, note-length variation, and named presets
+- [ ] 03-03-PLAN.md -- Pipeline orchestrator and MCP tool wiring
 
 ### Phase 4: Generic Plugin Control
 **Goal**: Users can discover and manipulate any loaded VST plugin's parameters by name
@@ -129,7 +130,7 @@ Phases execute in numeric order: 3 -> 4 -> 5 -> 6 -> 7
 |-------|-----------|----------------|--------|-----------|
 | 1. Foundation & Communication | v1.0 | 3/3 | Complete | 2026-02-23 |
 | 2. Note Generation Core | v1.0 | 3/3 | Complete | 2026-02-23 |
-| 3. Humanization Engine | v2.0 | 0/TBD | Not started | - |
+| 3. Humanization Engine | v2.0 | 0/3 | Not started | - |
 | 4. Generic Plugin Control | v2.0 | 0/TBD | Not started | - |
 | 5. Serum 2 Sound Design | v2.0 | 0/TBD | Not started | - |
 | 6. Audio Rendering Workflow | v2.0 | 0/TBD | Not started | - |
