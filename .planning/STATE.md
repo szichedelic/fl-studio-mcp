@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-23)
 ## Current Position
 
 Phase: 5 of 7 (Serum 2 Sound Design)
-Plan: 1 of 3
+Plan: 2 of 3
 Status: In progress
-Last activity: 2026-02-24 — Completed 05-01-PLAN.md (Serum 2 discovery + semantic aliases)
+Last activity: 2026-02-24 — Completed 05-02-PLAN.md (Recipes, presets, preset navigation)
 
-Progress: [████████████░░░] 80% (12/15 plans complete)
+Progress: [█████████████░░] 87% (13/15 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
+- Total plans completed: 14
 - Average duration: ~7 min
-- Total execution time: ~92 min
+- Total execution time: ~95 min
 
 **By Phase:**
 
@@ -31,7 +31,7 @@ Progress: [████████████░░░] 80% (12/15 plans compl
 | 02 | 3 | ~10 min | ~3 min |
 | 03 | 3 | ~8 min | ~2.7 min |
 | 04 | 3 | ~7 min | ~2.3 min |
-| 05 | 1/3 | ~3 min | ~3 min |
+| 05 | 2/3 | ~6 min | ~3 min |
 
 ## Accumulated Context
 
@@ -65,6 +65,9 @@ Progress: [████████████░░░] 80% (12/15 plans compl
 - [05-01]: 685 Serum 2 params discovered; 144 semantic aliases across 16 groups
 - [05-01]: O(1) Map-based alias resolution built at module load time
 - [05-01]: Unknown aliases pass through unchanged for Phase 4 fuzzy fallthrough
+- [05-02]: Recipe values are moderate musical starting points for user tweaking
+- [05-02]: Preset category = immediate parent folder name (matches Serum 2 convention)
+- [05-02]: FPN_Preset constant hardcoded as 6 (avoids midi module dependency)
 
 ### Blockers/Concerns
 
@@ -76,5 +79,5 @@ Progress: [████████████░░░] 80% (12/15 plans compl
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 05-01-PLAN.md — ready for 05-02
+Stopped at: Completed 05-02-PLAN.md — ready for 05-03
 Resume file: None
