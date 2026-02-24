@@ -1,463 +1,554 @@
-# Domain Pitfalls: FL Studio MCP Server
+# Pitfalls Research: Production Pipeline (Milestone v2.0)
 
-**Domain:** DAW automation / FL Studio integration / Natural language music production
+**Domain:** DAW automation -- humanization, VST plugin control, audio rendering, sample manipulation
 **Researched:** 2026-02-23
-**Confidence:** MEDIUM (based on WebSearch findings, FL Studio community discussions, and official API documentation)
+**Confidence:** MEDIUM (mix of official FL Studio API docs, community knowledge, and music production best practices)
+
+**Context:** This document covers pitfalls specific to ADDING humanization, Serum 2 integration, audio rendering, and sample manipulation to the existing FL Studio MCP server. The existing system already handles note generation via SysEx-over-MIDI and embedded .pyscript files.
 
 ---
 
 ## Critical Pitfalls
 
-Mistakes that cause rewrites or major issues. Avoid these at all costs.
+### Pitfall 1: Uniform Random Humanization Sounds Worse Than Quantized
+
+**What goes wrong:**
+Applying `Math.random() * range` to timing and velocity produces output that sounds "drunk" or "noisy" rather than human. Users disable the feature because the original quantized version sounded better.
+
+**Why it happens:**
+Human performance timing follows brownian noise (random walk) patterns -- deviations are cumulative and drift gradually before returning to tempo. Uniform random distribution ("white noise") produces independent, uncorrelated deviations that no human would ever produce. A real drummer who rushes beat 2 will likely still be slightly ahead on beat 3, gradually returning to center. Uniform random makes each note independently wrong.
+
+**How to avoid:**
+1. Use brownian/random-walk model: each note's offset is the previous offset plus a small delta, with a spring constant pulling back toward zero
+2. Implement separate models for timing, velocity, and duration -- they should correlate (harder hits are often slightly early)
+3. Use Gaussian distribution for deltas, not uniform. Standard deviation of ~5-15ms for timing, ~5-15 velocity units for dynamics
+4. Constrain maximum drift: if cumulative offset exceeds a threshold (~30ms), increase spring pull-back strength
+5. Make humanization amount a parameter (0.0 to 1.0) that scales the variance, not the maximum offset
+
+**Warning signs:**
+- A/B testing where quantized sounds better
+- Timing offsets that feel "jittery" rather than "flowing"
+- No perceptible groove or feel -- just noise on top of grid
+- Users consistently turn humanization off
+
+**Phase to address:** Humanization Engine (first phase of this milestone)
+
+**Sources:** [MIDI Humanizer (brownian noise approach)](https://github.com/vincerubinetti/midi-humanizer), [Splice: Humanize Your Drums](https://splice.com/blog/humanize-your-drums/), [Unison: How to Humanize MIDI](https://unison.audio/how-to-humanize-midi/)
 
 ---
 
-### Pitfall 1: "Operation Unsafe at Current Time" Crashes
+### Pitfall 2: Context-Free Velocity Humanization
 
-**What goes wrong:** Scripts attempt FL Studio API operations during periods when FL Studio's internal state doesn't permit them, causing TypeErrors or worse, complete FL Studio crashes without notice.
+**What goes wrong:**
+Randomizing velocity uniformly across all notes ignores musical context. Downbeats should be stronger, ghost notes should be soft, phrases should have dynamic arcs. Random velocity variation destroys these patterns instead of enhancing them.
 
-**Why it happens:** FL Studio's Python API enforces strict timing constraints about when certain operations are allowed. Operations that modify project state, plugin parameters, or UI elements can only be called during specific callback phases. The API doesn't always clearly document which operations are safe when.
+**Why it happens:**
+Developers treat velocity humanization as a post-processing filter that adds noise, when it should be a musical modeling system that creates dynamic contour. Real performers emphasize downbeats by 10-20 velocity points, play ghost notes at 30-50% of full velocity, and build intensity across phrases.
 
-**Consequences:**
-- FL Studio crashes silently with no error message
-- User loses unsaved work
-- Script appears unreliable/broken
-- Repeated crashes until code is fixed
+**How to avoid:**
+1. Implement beat-position awareness: notes on beat 1 get accent boost, notes on "e" and "a" get ghost-note reduction
+2. Create a velocity envelope that follows musical phrasing (build up before chorus, pull back in verse)
+3. Separate "accent pattern" (deterministic, beat-aware) from "humanization jitter" (small random variation around the accent pattern)
+4. For drums specifically: kick at 100-115, snare at 90-110, ghost notes at 35-50, hi-hat with gradual accent cycling
+5. Allow velocity curve presets per instrument type (drums, piano, bass have different patterns)
 
-**Prevention:**
-1. Check PME (Performance, Modify, Execute) flags before any state-modifying operation using the `midi` module's flag constants
-2. Wrap potentially unsafe operations in try/catch blocks that catch `TypeError` with message "Operation unsafe at current time"
-3. Never assume an operation is safe - verify with flag checks first
-4. Test extensively during playback, recording, and idle states
+**Warning signs:**
+- Downbeats are sometimes softer than upbeats
+- Ghost notes and accented notes have similar velocity
+- Pattern loses groove after humanization
+- Hi-hat patterns lose their accent cycle
 
-**Detection (warning signs):**
-- Intermittent crashes that only happen sometimes
-- Operations that work in isolation but fail when FL Studio is playing
-- Crashes that occur without any Python error in the Script output window
+**Phase to address:** Humanization Engine
 
-**Phase to address:** Phase 1 - Core infrastructure must establish safe operation patterns from the start
-
-**Sources:** [FL Classes - FL Studio Python API](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/fl_classes/), [FL Scripting API Functionality](https://forum.image-line.com/viewtopic.php?t=309492)
+**Sources:** [Slam Tracks: 5 Secrets to Humanizing MIDI Drums](https://www.slamtracks.com/2025/12/20/5-secrets-to-humanizing-midi-drums/), [Unison: 20+ Pro Tips](https://unison.audio/how-to-humanize-midi/)
 
 ---
 
-### Pitfall 2: Threading Incompatibility
+### Pitfall 3: Swing Implementation as Linear Interpolation
 
-**What goes wrong:** Developers attempt to use Python threading or async patterns, causing unpredictable behavior, race conditions, or crashes.
+**What goes wrong:**
+Swing is implemented by shifting every even-numbered subdivision by a fixed percentage, producing a mechanical shuffle rather than a musical groove. Real swing is not mathematically precise -- it varies throughout a performance.
 
-**Why it happens:** FL Studio uses a "stripped down custom Python interpreter" where "compatibility with multiple threads is broken." Standard Python threading modules are unavailable, and any attempt to use concurrent execution patterns conflicts with FL Studio's audio engine.
+**Why it happens:**
+Most DAW swing implementations ARE linear percentage-based (50% = no swing, 67% = triplet swing). Developers copy this approach without adding the humanization layer on top. The result is a perfectly regular shuffle, which is still robotic.
 
-**Consequences:**
-- Unpredictable script behavior
-- Race conditions with audio thread
-- Audio dropouts or glitches
-- Potential FL Studio crashes
+**How to avoid:**
+1. Implement percentage-based swing as the foundation (shift even subdivisions forward): this part IS standard
+2. Layer humanization on TOP of swing -- the swing grid is the new "center" around which brownian drift operates
+3. Swing percentage should be per-instrument (hi-hats may swing more than kick)
+4. Apply swing BEFORE humanization, not after. Humanization should be relative to the swung position, not the original grid
+5. Typical range: 50-75% for most genres. Triplet swing is ~67%. MPC-style swing is ~62-66%
 
-**Prevention:**
-1. Never use `threading`, `asyncio`, or any concurrent execution pattern
-2. Design all operations to be synchronous and single-threaded
-3. Use FL Studio's event-based model (OnIdle, OnMidiMsg, etc.) for any time-sensitive operations
-4. Queue operations and process them sequentially in OnIdle callbacks
-5. For MCP server: Handle MCP requests asynchronously OUTSIDE FL Studio, but execute FL Studio operations synchronously
+**Warning signs:**
+- Swing sounds like a metronome with uneven beats (perfectly regular shuffle)
+- Instruments that should have different swing amounts all shuffle identically
+- Swing + humanization applied in wrong order produces double-offset
 
-**Detection (warning signs):**
-- Audio glitches when script runs
-- Operations happening in wrong order
-- Scripts "sometimes" work
-- Import errors for threading modules
+**Phase to address:** Humanization Engine
 
-**Phase to address:** Phase 1 - Architecture must be event-driven from day one
-
-**Sources:** [FL Studio MIDI Scripting 101](https://flmidi-101.readthedocs.io/en/latest/scripting/fl_midi_api.html)
+**Sources:** [Apple Logic Pro: Quantize Parameters](https://support.apple.com/guide/logicpro/quantize-parameter-values-lgcp47452db8/mac), [Sweetwater: When to Quantize](https://www.sweetwater.com/insync/quantization-when-and-when-not-to-quantize/)
 
 ---
 
-### Pitfall 3: Initialization Errors Crash FL Studio
+### Pitfall 4: VST Parameter Index Instability with 4240-Parameter Space
 
-**What goes wrong:** Any syntax error, import failure, or exception during script initialization causes FL Studio to crash silently and repeatedly on every subsequent startup.
+**What goes wrong:**
+FL Studio reports 4240 parameters for every VST plugin (4096 standard + 128 MIDI CC + 16 aftertouch). Most of these have blank names or are unused. Code that hardcodes parameter indices breaks when the plugin updates, and iterating all 4240 parameters to find one by name is slow and unreliable.
 
-**Why it happens:** FL Studio loads MIDI scripts during startup. If a script throws any error during this phase, FL Studio crashes without showing an error message. The user must use the FL Studio Diagnostic tool to reset settings and release MIDI devices.
+**Why it happens:**
+FL Studio's `plugins.getParamCount()` returns 4240 for VSTs regardless of how many the plugin actually exposes. Many parameters return empty strings from `plugins.getParamName()`. Parameter indices are positional and can shift between plugin versions. There is a known, long-standing FL Studio bug where `getParamValue` returns incorrect values for some VSTs.
 
-**Consequences:**
-- FL Studio becomes unusable until script is fixed/removed
-- No error message to diagnose the problem
-- Recovery requires Diagnostic tool knowledge
-- Users may lose FL Studio MIDI settings entirely
+**How to avoid:**
+1. Build a parameter discovery layer that runs once per plugin instance: iterate parameters, filter out blank/unnamed ones, cache the name-to-index mapping
+2. Never hardcode parameter indices -- always resolve by name at runtime
+3. Cache parameter maps per plugin-name + plugin-version combination, not globally
+4. For Serum 2 specifically: pre-build a known parameter map but validate it against runtime discovery
+5. Handle blank parameter names gracefully -- log them, skip them, don't crash
+6. Implement fuzzy matching for parameter names (Serum may report "Osc A Level" while user says "oscillator A volume")
+7. Add a `plugin.discover` MCP tool so users can see available parameters
 
-**Prevention:**
-1. Wrap ALL module-level code in try/except blocks
-2. Test scripts in isolation before connecting to FL Studio
-3. Use lazy imports - import modules inside functions, not at module level
-4. Keep initialization code minimal - defer setup to OnInit callback
-5. Never use external dependencies that might fail to import
-6. Validate all configuration files exist before reading them
+**Warning signs:**
+- `getParamName(i, channel)` returns empty string for most indices
+- Parameter automation affects wrong knob after plugin update
+- Discovery scan takes multiple seconds due to 4240 iterations
+- Same parameter name appears at different indices on different machines
 
-**Detection (warning signs):**
-- FL Studio crashes immediately on startup
-- Crash persists across restarts
-- Works fine when script is removed
+**Phase to address:** Generic Plugin Control (before Serum 2 integration)
 
-**Phase to address:** Phase 1 - All script entry points must have defensive error handling
-
-**Sources:** [FL Studio MIDI Scripting 101](https://flmidi-101.readthedocs.io/en/latest/scripting/fl_midi_api.html)
+**Sources:** [FL Studio API Stubs - Plugins Module](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/plugins/), [FL Studio VST3 Parameter ID Issue](https://forum.image-line.com/viewtopic.php?t=299601)
 
 ---
 
-### Pitfall 4: VST Parameter Indexing Mismatch
+### Pitfall 5: getParamValue Unreliable for VSTs -- Shadow State Required
 
-**What goes wrong:** Code assumes stable VST parameter indices, but FL Studio indexes parameters by position rather than by stable IDs. When plugins update, parameter mappings break silently.
+**What goes wrong:**
+Attempting to implement "relative" parameter adjustments ("make it brighter") fails because `plugins.getParamValue()` returns incorrect values for many VST plugins. The system cannot know the current state to make relative changes.
 
-**Why it happens:** FL Studio has a known VST3 parameter ID serialization issue where parameter order changes in plugin updates cause FL Studio to mismap automation data. The same parameter might have different indices across plugin versions.
+**Why it happens:**
+This is a known, long-standing FL Studio bug. `getParamValue` works for FL Studio native plugins but is broken for many third-party VSTs. The FL Studio team has acknowledged this but has not fixed it as of current versions. This means you cannot query "what is the current filter cutoff" and then add 10% to it.
 
-**Consequences:**
-- Automating/reading wrong parameter silently
-- Previously working Serum 2 or Addictive Drums controls stop working after plugin update
-- Subtle bugs where parameters are "close but wrong"
-- User blames the MCP server for plugin update issues
+**How to avoid:**
+1. Maintain shadow state: every time you call `setParamValue()`, record the value in a local cache (Node.js side)
+2. For initial state: either assume defaults (0.5 for most parameters) or require a "sync" operation where the user manually reports current state
+3. Design all parameter modifications as ABSOLUTE, not relative: "set filter cutoff to 0.7" not "increase filter cutoff by 10%"
+4. When relative adjustments are needed, use shadow state as the base, with a warning that shadow state may be stale if user tweaked the plugin manually
+5. Provide a "reset to known state" command that sets all tracked parameters to their shadow values
+6. Test `getParamValue` specifically with Serum 2 early -- it may work for Serum 2 even if broken for other VSTs
 
-**Prevention:**
-1. Use parameter names as the primary identifier, not indices
-2. Build a parameter discovery/mapping layer that resolves names to indices at runtime
-3. Cache parameter mappings per plugin instance, not globally
-4. Validate parameter mappings periodically
-5. Log which parameters are being accessed with names AND indices for debugging
-6. Consider using the [fl_param_checker tool](https://github.com/MaddyGuthridge/fl_param_checker) for discovery
+**Warning signs:**
+- `getParamValue` returns 0.0 for parameters that are clearly not at zero
+- "Increase brightness" makes the sound darker (because initial read was wrong)
+- Relative adjustments produce inconsistent results
 
-**Detection (warning signs):**
-- "Set filter cutoff" changes a different knob
-- Parameter automation stopped working after plugin update
-- Same command produces different results on different machines
-
-**Phase to address:** Phase 2 (VST Control) - Parameter mapping must be robust and name-based
-
-**Sources:** [FL Studio does not respect VST3 parameter id](https://forum.image-line.com/viewtopic.php?t=299601), [vst-parameters repository](https://github.com/forgery810/vst-parameters)
-
----
-
-### Pitfall 5: getParamValue Broken for Some VSTs
-
-**What goes wrong:** Attempting to READ current parameter values from VST plugins fails or returns incorrect values for many plugins.
-
-**Why it happens:** The FL Studio API has known, long-standing bugs where "getting and setting the values of some VST plugin parameters has been broken for months." This isn't documented - it's just broken for certain plugins.
-
-**Consequences:**
-- Cannot read current state of plugin to make intelligent decisions
-- "Make it brighter" can't know what the current brightness is
-- State reading works for some plugins but not others
-- Impossible to implement relative adjustments
-
-**Prevention:**
-1. Maintain shadow state: track every parameter you set
-2. Never rely on getParamValue for VST plugins - treat it as unreliable
-3. Test parameter reading for each specific plugin you support (Serum 2, AD2)
-4. Build parameter value cache that you maintain independently
-5. Provide "reset to known state" commands for recovery
-6. Design features to work with or without current state knowledge
-
-**Detection (warning signs):**
-- getParamValue returns 0 or -1 for parameters with obvious values
-- Returned values don't match what's visible in plugin UI
-- Reading works in native FL plugins but not VSTs
-
-**Phase to address:** Phase 2 (VST Control) - Don't assume state reading works; design around it
+**Phase to address:** Generic Plugin Control
 
 **Sources:** [Will the Python API get fixed?](https://forum.image-line.com/viewtopic.php?t=272593), [FL Scripting API Functionality](https://forum.image-line.com/viewtopic.php?t=309492)
 
 ---
 
+### Pitfall 6: No Programmatic Audio Rendering in FL Studio Python API
+
+**What goes wrong:**
+The team plans to render MIDI to audio programmatically, but discovers there is NO function in the FL Studio MIDI Controller Scripting API to trigger a render/export. The `general` module provides state queries and undo, not rendering. Audio rendering is a GUI-only operation.
+
+**Why it happens:**
+FL Studio's Python API is explicitly designed to NOT "alter the end user's PC in any way" for security reasons. Rendering creates files on disk, which violates this constraint. The export function is only accessible via File > Export in the GUI.
+
+**How to avoid:**
+1. Accept that fully automated rendering is not possible via the current API
+2. Explore keyboard shortcut simulation: FL Studio's `ui` module or `transport` module may allow triggering the export dialog
+3. Investigate using `ui.escape()`, `ui.enter()`, and keyboard simulation to navigate the export dialog
+4. Alternative: use FL Studio's command-line rendering (FL Studio supports `/R` flag for batch rendering from command line) -- but this requires closing and reopening the project
+5. Alternative: record audio output in real-time through an audio routing solution (e.g., VB-CABLE capturing FL Studio's audio output to WAV)
+6. Design the resampling workflow around what IS possible: manually export, then use Node.js to manipulate the resulting WAV file
+7. Flag this as a major constraint in planning -- do not promise automated render without validating a workaround first
+
+**Warning signs:**
+- Cannot find `render`, `export`, or `save` functions in the API stubs
+- Planning renders as a feature but have no implementation path
+- Users expect "render this pattern" but get silence
+
+**Phase to address:** Audio Rendering (needs feasibility spike BEFORE committing to implementation)
+
+**Sources:** [FL Studio MIDI Scripting Manual](https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/midi_scripting.htm), [FL Studio Python API - General Module](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/general/)
+
+---
+
+### Pitfall 7: No Programmatic Sample Loading into Channels
+
+**What goes wrong:**
+The team plans sample manipulation workflows (pitch-shift, reverse, layer) that require loading WAV files into FL Studio channels programmatically, but the `channels` module has no `loadSample` or `setChannelSamplePath` function.
+
+**Why it happens:**
+The channels API provides property access (name, color, volume, pan, pitch, mute, solo, target mixer track) and selection management, but no file loading. Like rendering, loading files from disk violates FL Studio's security model for MIDI scripts.
+
+**How to avoid:**
+1. Accept that automated sample loading may not be possible via current API
+2. Investigate drag-and-drop simulation or clipboard-based approaches
+3. Alternative approach: manipulate audio OUTSIDE FL Studio entirely (in Node.js using libraries like `audiobuffer-to-wav`, `soundfile`, or FFmpeg) and provide the user with a file path to drag into FL Studio
+4. For Edison-based manipulation: Edison has its own Python scripting with `Sample` class that supports per-sample read/write, amplitude, normalization, and silence operations -- but Edison scripts are separate from MIDI controller scripts and cannot be triggered programmatically
+5. Design the workflow as "prepare + instruct": Node.js does the DSP, saves the file, and tells the user where to find it
+6. Test whether `channels.getChannelType()` and related functions can at least detect what type of plugin is loaded
+
+**Warning signs:**
+- Cannot find sample loading functions in channel API docs
+- Building sample manipulation features that have no way to get results back into FL Studio
+- Users expect seamless "render and reload" but get manual steps
+
+**Phase to address:** Sample Manipulation (needs feasibility spike)
+
+**Sources:** [FL Studio Channels Properties API](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/channels/properties/)
+
+---
+
 ## Moderate Pitfalls
 
-Mistakes that cause delays or technical debt. These are worth avoiding but recoverable.
+### Pitfall 8: SysEx Message Size Limits for Large Payloads
+
+**What goes wrong:**
+When sending large parameter maps (e.g., Serum 2 with hundreds of parameters) or long note lists through SysEx, messages exceed buffer limits in the MIDI driver chain, causing silent truncation or corruption.
+
+**Why it happens:**
+While the MIDI spec has no hard SysEx size limit, practical limits exist at every layer: loopMIDI buffers, Windows MIDI API buffers, the `node-midi` library (RtMidi wrapper), and FL Studio's own SysEx receive buffer. The current system already uses base64 encoding which inflates payload size by ~33%. A JSON payload with 200+ parameter names and values, base64-encoded, could easily exceed 10KB.
+
+**How to avoid:**
+1. Implement message chunking: split large payloads across multiple SysEx messages using the continuation byte (byte 4 in the protocol, currently unused -- set to 0x00 for final, 0x01 for continued)
+2. Set a conservative max payload size per message (2KB before base64 encoding, ~2.7KB after)
+3. On the receiving side (FL Bridge), implement a reassembly buffer that concatenates chunks before parsing
+4. For parameter discovery responses, paginate: send 50 parameters per message, not all 4240
+5. Test maximum reliable SysEx size through loopMIDI empirically before committing to a chunk size
+6. Consider compressing JSON payloads before base64 encoding (unlikely to help much with short key names)
+
+**Warning signs:**
+- Large commands silently fail (no response at all)
+- Responses are truncated mid-JSON
+- Works with small parameter sets but fails with large ones
+- Intermittent failures that correlate with payload size
+
+**Phase to address:** Generic Plugin Control (when parameter discovery responses get large)
+
+**Sources:** [REAPER 32KB SysEx limit](https://forum.cockos.com/archive/index.php/t-108481.html), [SysEx size discussion](https://linux-audio-dev.linuxaudio.narkive.com/38cqgyIG/lad-maximum-size-of-sysex-messages-in-jack-midi-and-alsa-sequencer)
 
 ---
 
-### Pitfall 6: Humanization That Sounds Worse Than Quantized
+### Pitfall 9: Timeout Issues for Long-Running Operations
 
-**What goes wrong:** Simple randomization of timing/velocity produces results that sound "sloppy" rather than "human."
+**What goes wrong:**
+The MCP server's default 5-second timeout (defined in `midi-client.ts`) causes parameter discovery, batch parameter setting, or any future rendering trigger to fail with "Command timeout" before the operation completes.
 
-**Why it happens:** Human performance randomness follows "brownian noise" patterns (cumulative deviations that drift and return), not "white noise" (uniform random distribution). Additionally, repeatedly selecting the same or similar velocity samples creates obvious mechanical artifacts.
+**Why it happens:**
+The current system was designed for quick operations (transport control, state reading) that complete in milliseconds. Parameter discovery iterating 4240 parameters, or setting 50+ parameters sequentially, can take multiple seconds. Rendering (if a workaround is found) could take 30+ seconds. The 5-second timeout is hardcoded as `DEFAULT_TIMEOUT`.
 
-**Consequences:**
-- Output sounds worse than the quantized original
-- Users lose trust in the humanization feature
-- Feature becomes useless and ignored
+**How to avoid:**
+1. Make timeout configurable per command type: quick operations (transport, state) keep 5s, parameter discovery gets 30s, rendering gets 120s
+2. Implement progress feedback: for long operations, FL Bridge sends intermediate "still working" heartbeat messages that reset the timeout
+3. For parameter discovery: do it lazily (discover on first access) rather than all-at-once
+4. For batch parameter setting: send individual set commands rather than one giant batch (each completes quickly)
+5. Add timeout parameter to `sendCommand()` calls in the MCP tools layer
 
-**Prevention:**
-1. Use brownian/random-walk distributions for timing, not uniform random
-2. Implement velocity curves that vary contextually (downbeats stronger, etc.)
-3. For sample-based instruments, ensure sample variety selection
-4. Study real drummer/player timing patterns
-5. Make humanization amount configurable - start subtle
-6. Test humanization on isolated drums to hear artifacts clearly
-7. Build genre-appropriate humanization profiles (jazz looser than EDM)
+**Warning signs:**
+- "Command timeout" errors when listing plugin parameters
+- Operations that work on simple plugins fail on complex ones (Serum 2)
+- Rendering trigger times out before render completes
 
-**Detection (warning signs):**
-- Drums sound "drunk" not "human"
-- Same sample obviously repeated
-- Timing feels random rather than musical
-- Users consistently disable humanization
-
-**Phase to address:** Phase 3 (Humanization) - Requires dedicated research spike before implementation
-
-**Sources:** [How to Make MIDI Drums Sound Human](https://blog.zzounds.com/2020/05/27/how-to-make-your-midi-drums-sound-human/), [Linux Audio Conference paper on humanization](https://lac2020.sciencesconf.org/316448/LAC_20.pdf)
+**Phase to address:** Generic Plugin Control (must handle before Serum 2 discovery)
 
 ---
 
-### Pitfall 7: MIDI Port Configuration Complexity
+### Pitfall 10: Operation Unsafe at Current Time During Plugin Parameter Modification
 
-**What goes wrong:** The MCP server requires manual MIDI port setup on Windows, which fails silently or with misleading error messages.
+**What goes wrong:**
+Setting plugin parameters during playback or at the wrong time triggers "Operation unsafe at current time" TypeError, causing parameter changes to silently fail.
 
-**Why it happens:** FL Studio communicates with scripts via MIDI ports. Windows requires third-party software (loopMIDI) to create virtual MIDI ports. Port assignment can fail with misleading "memory" errors that actually reflect Windows API incompatibilities.
+**Why it happens:**
+FL Studio enforces PME (Performance, Modify, Execute) flags that restrict when state-modifying operations are safe. The flags `PME_System` (bit 1) and `PME_System_Safe` (bit 2) must be set for parameter modifications. During modal dialogs, rendering, or certain playback states, these flags are unset.
 
-**Consequences:**
-- Users can't connect MCP server to FL Studio
-- Error messages don't indicate the real problem
-- Setup seems broken when it's just configuration
-- Cross-platform behavior differs (works on macOS, fails on Windows)
+**How to avoid:**
+1. Check PME flags before calling `plugins.setParamValue()` -- use bitwise AND with `midi.PME_System`
+2. Implement a safe-operation decorator that catches TypeError and retries on next OnIdle cycle
+3. Queue parameter changes and apply them when flags permit
+4. If a parameter set fails due to safety, report the failure to the MCP server (don't silently swallow it)
+5. Test parameter modification during: playback, recording, idle, and with modal dialogs open
 
-**Prevention:**
-1. Provide explicit, step-by-step Windows setup documentation
-2. Include loopMIDI installation in setup process
-3. Validate MIDI port existence before attempting connection
-4. Provide clear error messages: "MIDI port 'X' not found - did you run loopMIDI?"
-5. Build a connection status tool that diagnoses common issues
-6. Test setup process on fresh Windows installation
+**Warning signs:**
+- Parameter changes work when stopped but fail during playback
+- Intermittent "Operation unsafe" errors in Script output
+- Plugin parameters appear to not change (error was caught but not reported)
 
-**Detection (warning signs):**
-- "Memory error" when assigning MIDI ports
-- Connection works on dev machine but not user machine
-- macOS users have no issues, Windows users all fail
+**Phase to address:** Generic Plugin Control
 
-**Phase to address:** Phase 1 - Connection infrastructure must handle this gracefully
-
-**Sources:** [Flapi GitHub](https://github.com/MaddyGuthridge/Flapi), [FL Studio MIDI Scripting 101](https://flmidi-101.readthedocs.io/en/latest/scripting/fl_midi_api.html)
+**Sources:** [FL Studio PME Flags](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/midi/pme%20flags/), [FL Classes Safety](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/fl_classes/)
 
 ---
 
-### Pitfall 8: Python Version and Module Constraints
+### Pitfall 11: Serum 2 Parameter Complexity and Naming Inconsistency
 
-**What goes wrong:** Developers try to use modern Python features or popular libraries, and they simply don't exist.
+**What goes wrong:**
+Serum 2 has 3 oscillators, 2 filters, 6 LFOs, 4 envelopes, 8 macros, multiple effects, and wavetable parameters -- potentially hundreds of meaningful parameters. The parameter names as reported by `getParamName()` may not match what users expect (internal names vs. UI labels), and some parameters may have duplicate or ambiguous names.
 
-**Why it happens:** FL Studio's Python interpreter is "stripped down" and based on Python 3.9.x. Missing modules include: `typing` (for type hints), `__future__`, `functools`, `random`, `traceback`, and most system-interaction modules. No `pip`, no external package installation.
+**Why it happens:**
+Serum 2 is a VST3 plugin with extensive parameter automation support. FL Studio's 4096-parameter slot approach means many slots are unused or have cryptic names. The mapping between Serum 2's UI (which shows "Osc A Octave" or "Filter 1 Cutoff") and the parameter names reported to FL Studio via VST3 may differ.
 
-**Consequences:**
-- Import errors for commonly-used modules
-- Code that works in normal Python fails in FL Studio
-- Can't use popular libraries for JSON, HTTP, etc.
-- Must bundle any external dependencies manually
+**How to avoid:**
+1. Build Serum 2 integration in two phases: first generic plugin control (works with any VST), then Serum-specific aliases and semantic grouping
+2. Create a Serum 2 parameter alias table: map user-friendly names ("filter cutoff") to discovered parameter names ("Fltr1_Freq" or whatever FL Studio reports)
+3. Run parameter discovery on Serum 2 early and store the results -- this is a research spike that should happen before coding Serum 2 features
+4. Group parameters semantically: oscillators, filters, envelopes, LFOs, FX, macros, global
+5. Provide a "search parameters" tool that does fuzzy matching against parameter names
+6. Do NOT try to map all hundreds of Serum 2 parameters upfront -- start with the most commonly used (filter, oscillator level, macro assignments, basic FX) and expand based on actual usage
 
-**Prevention:**
-1. Test ALL code inside FL Studio's Python environment, not external Python
-2. Avoid type hints that require `typing` module at runtime
-3. Bundle any external modules with the script (don't rely on pip)
-4. Document exactly which Python features are available
-5. Consider what modules you actually need - MCP communication will happen OUTSIDE FL Studio; only the FL Studio control happens inside
-6. Build compatibility shims for missing modules if needed
+**Warning signs:**
+- Parameter names from FL Studio don't match Serum 2 UI labels
+- Multiple parameters with similar names (e.g., "Level" for each oscillator)
+- Users request parameters that don't map to any discovered name
+- Parameter mapping works in Serum 1 but breaks in Serum 2
 
-**Detection (warning signs):**
-- "ModuleNotFoundError" in Script output
-- Code works in pytest but fails in FL Studio
-- Type annotations cause runtime errors
+**Phase to address:** Serum 2 Integration (after generic plugin control is working)
 
-**Phase to address:** Phase 1 - Establish Python compatibility baseline immediately
-
-**Sources:** [FL Studio MIDI Scripting 101](https://flmidi-101.readthedocs.io/en/latest/scripting/fl_midi_api.html)
+**Sources:** [Serum 2 Features](https://xferrecords.com/products/serum-2), [Serum 2 Advanced Tips](https://www.noiseharmony.com/post/17-advanced-tips-for-serum-2)
 
 ---
 
-### Pitfall 9: Latency and Buffer Issues
+### Pitfall 12: Humanization Applied to Already-Humanized Notes (Double Humanization)
 
-**What goes wrong:** MIDI operations have noticeable delay, making real-time feedback feel sluggish or timing-sensitive operations fail.
+**What goes wrong:**
+User says "humanize this pattern" multiple times, and each application adds another layer of random variation. After 3-4 applications, the pattern is unrecognizably sloppy. There is no way to "undo" humanization or return to the original grid.
 
-**Why it happens:** MIDI latency is affected by audio buffer length, driver type, and FL Studio's processing queue. Commands go through the MIDI port layer, adding latency. FL Studio "will not sync to an external MIDI clock."
+**Why it happens:**
+Humanization is destructive -- once timing/velocity offsets are baked into note data, the original grid positions are lost. The system has no concept of "original position" vs. "current humanized position." Each humanization pass treats the current position as the grid reference.
 
-**Consequences:**
-- Operations feel sluggish
-- Recording timing is off
-- Real-time preview of changes is delayed
-- Users perceive the tool as slow/broken
+**How to avoid:**
+1. Store original grid-quantized note data alongside humanized output
+2. Implement "re-humanize" (reset to grid, then apply new humanization) as distinct from "add more humanization"
+3. Track whether a pattern has been humanized (metadata flag) and warn before applying again
+4. Make humanization non-destructive: apply it at RENDER time, not at note-creation time, so the stored notes are always clean
+5. Alternative: store humanization parameters separately and recalculate offsets deterministically from a seed, so humanization can be adjusted without re-applying
+6. Provide "quantize" tool as the inverse of humanize
 
-**Prevention:**
-1. Use ASIO drivers, not default Windows audio
-2. Document buffer size requirements (under 512 for responsiveness)
-3. For operations that feel slow, batch them rather than sending individual commands
-4. Don't promise "real-time" - set expectations for slight delay
-5. Implement operation queuing with confirmation rather than assuming instant execution
+**Warning signs:**
+- Users complain about "sloppy" notes after multiple humanize commands
+- No way to undo humanization back to clean grid
+- A/B comparison impossible because original data is gone
 
-**Detection (warning signs):**
-- Noticeable delay between command and result
-- Timing varies based on user's audio settings
-- Works fine on dev machine with ASIO, fails on user machine with default drivers
-
-**Phase to address:** Phase 1 - Understand latency characteristics early; Phase 2+ - Optimize as needed
-
-**Sources:** [How To Fix MIDI Keyboard Latency/Delay In FL Studio](https://integraudio.com/how-fix-midi-keyboard-latency/), [FL Studio MIDI Keyboard Delay Forum](https://forum.image-line.com/viewtopic.php?t=308380)
+**Phase to address:** Humanization Engine (design decision -- non-destructive vs. destructive)
 
 ---
 
-### Pitfall 10: FL Studio Version Compatibility
+### Pitfall 13: State Synchronization Drift Between Node.js and FL Studio
 
-**What goes wrong:** Scripts that work on one FL Studio version break on another due to API changes.
+**What goes wrong:**
+The Node.js MCP server's understanding of FL Studio state (which pattern is selected, what parameters are set, what notes exist) diverges from actual FL Studio state. User makes manual changes in FL Studio that the MCP server doesn't know about, leading to commands that operate on stale assumptions.
 
-**Why it happens:** FL Studio's MIDI Scripting API continues to evolve with each version. New parameters are added to existing functions. New functions are introduced. Behavior changes subtly.
+**Why it happens:**
+FL Studio has no push notification system -- the MIDI controller script can only respond to queries, not proactively notify about state changes. If the user manually changes the selected pattern, tweaks a synth knob, or adds notes by hand, the MCP server doesn't know. Shadow state (Pitfall 5) makes this worse because the cache can be arbitrarily stale.
 
-**Consequences:**
-- Script works for developer but not user with different FL version
-- Hard to debug without knowing exact FL version
-- Can't use new features without breaking old version support
+**How to avoid:**
+1. Query state fresh before any operation that depends on it (don't cache pattern selection)
+2. For shadow state (plugin parameters): add timestamps and warn when shadow state is old
+3. Implement a "sync" command that refreshes all cached state
+4. Design commands to be idempotent where possible: "set pattern 3 as current" rather than "go to next pattern"
+5. Accept that some manual changes will go undetected -- document this limitation
+6. Consider polling in OnIdle: FL Bridge could detect state changes and push updates, but this adds complexity and performance cost
+7. For plugin parameters specifically: always re-read state before relative operations (even if getParamValue is unreliable -- at least try)
 
-**Prevention:**
-1. Document minimum FL Studio version requirement (FL Studio 2025)
-2. Check FL Studio version at startup and warn if incompatible
-3. Use version-detection to enable/disable features
-4. Test on multiple FL Studio versions if supporting more than one
-5. Pin to specific FL Studio API Stubs version for development
+**Warning signs:**
+- "Add notes to current pattern" adds to wrong pattern because user switched manually
+- Plugin parameter shadow state shows cutoff at 0.5 but user tweaked it to 0.8
+- Commands produce unexpected results after user touches FL Studio directly
 
-**Detection (warning signs):**
-- "Function not found" or "wrong number of arguments" errors
-- Works for you but not users reporting bugs
-- Feature works, but newer version has better function for it
-
-**Phase to address:** Phase 1 - Establish version requirements; Phase 4+ - Consider backward compatibility
-
-**Sources:** [FL Studio 2025.2.3 Release Notes](https://forum.image-line.com/viewtopic.php?t=338390), [FL Studio API Stubs](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/)
+**Phase to address:** All phases (ongoing concern -- design principle, not one-time fix)
 
 ---
 
 ## Minor Pitfalls
 
-Mistakes that cause annoyance but are fixable.
+### Pitfall 14: Windows File Path Issues for Audio Files
+
+**What goes wrong:**
+File paths containing unicode characters, spaces, or exceeding 260 characters cause failures when reading/writing audio files (rendered WAV, sample files, Splice downloads).
+
+**Why it happens:**
+Windows has a 260-character MAX_PATH limit by default. Splice sample paths can be deeply nested with long names. FL Studio's Python 3.9 interpreter may not handle extended-length paths (`\\?\` prefix). Node.js handles long paths better but must be configured.
+
+**How to avoid:**
+1. Use raw strings or forward slashes in Python paths
+2. On Node.js side, use `path.resolve()` and handle paths consistently
+3. Test with Splice sample paths (typically `C:\Users\...\Splice\Sounds\...` with long folder names)
+4. If writing rendered audio, use short output directory names
+5. Validate file paths before operations -- check existence and accessibility
+6. Handle `ENOENT` and `EPERM` errors gracefully with user-friendly messages
+
+**Warning signs:**
+- Audio operations fail on some users' machines but not others
+- Paths with spaces or unicode characters cause crashes
+- File not found errors for files that clearly exist
+
+**Phase to address:** Audio Rendering / Sample Manipulation
 
 ---
 
-### Pitfall 11: Debug Output Causes Memory Leaks
+### Pitfall 15: Over-Humanizing Fast Passages, Under-Humanizing Slow Passages
 
-**What goes wrong:** Using print() extensively for debugging causes memory issues and performance degradation.
+**What goes wrong:**
+A fixed humanization amount (e.g., +/- 20ms timing offset) sounds appropriate for quarter notes at 120 BPM but is far too much for rapid 16th notes (where the gap between notes is only ~125ms) and imperceptible for whole notes (where 20ms of 2000ms is negligible).
 
-**Why it happens:** Excessive console output (hundreds of lines) in FL Studio's Script output window causes memory leaks and can slow down FL Studio.
+**Why it happens:**
+Humanization amount is set as an absolute time value rather than being relative to the note density or tempo. At high note densities, 20ms is 16% of the inter-note interval; at low densities, it is 1%.
 
-**Consequences:**
-- FL Studio becomes sluggish during development
-- Memory usage grows over time
-- Can cause crashes in long sessions
+**How to avoid:**
+1. Scale humanization amount relative to the current note spacing or subdivision grid
+2. Make humanization tempo-aware: reduce absolute offsets at higher tempos
+3. For rapid passages (32nd notes, drum rolls), use much tighter humanization (3-5ms)
+4. For slow passages, increase humanization range proportionally
+5. Consider using a percentage of the beat subdivision rather than absolute milliseconds
 
-**Prevention:**
-1. Use conditional logging that can be disabled in production
-2. Limit output volume - summarize rather than dump
-3. Clear Script output window periodically during testing
-4. Use external logging where possible (write to file outside FL Studio)
+**Warning signs:**
+- Fast drum fills become unintelligible mush
+- Slow passages sound perfectly quantized despite humanization being "on"
+- Same settings produce good results at 100 BPM but bad results at 160 BPM
 
-**Detection:** FL Studio gets slower over time during development; memory usage climbs
-
-**Phase to address:** Phase 1 - Establish logging patterns that don't cause issues
-
----
-
-### Pitfall 12: Addictive Drums 2 MIDI Mapping Quirks
-
-**What goes wrong:** AD2's MIDI mapping appears "broken" when remapping from stock configuration.
-
-**Why it happens:** Addictive Drums 2 has specific MIDI mapping requirements. The hi-hat requires CC reverse checkbox. Deviating from stock map can make MIDI monitor show messages not arriving. Direct plugin interface dragging works differently than timeline MIDI.
-
-**Consequences:**
-- Hi-hat control has 5-second delay
-- MIDI notes don't trigger expected drums
-- Works in some contexts but not others
-
-**Prevention:**
-1. Document AD2-specific MIDI requirements
-2. Test AD2 integration separately from generic VST control
-3. Use AD2's native MIDI map format when possible
-4. Check CC reverse setting for hi-hat pedal control
-5. Consider dragging MIDI to timeline rather than direct AD2 player
-
-**Detection:** Hi-hat specifically misbehaves; other drums work fine
-
-**Phase to address:** Phase 2 (VST Control) - AD2 requires specific testing
-
-**Sources:** [Addictive Drums 2 MIDI Mapping forum](https://gearspace.com/board/music-computers/970564-addictive-drums-2-midi-mapping-work.html)
+**Phase to address:** Humanization Engine
 
 ---
 
-### Pitfall 13: Project File Parsing Limitations
+### Pitfall 16: Edison Scripts Cannot Be Triggered From MIDI Controller Scripts
 
-**What goes wrong:** If using PyFLP to read .flp files directly, older project files fail to parse.
+**What goes wrong:**
+Developers discover that Edison has sample manipulation capabilities (per-sample read/write, amplitude, normalization, sine generation) and try to trigger Edison scripts from the MIDI controller script, but the two scripting systems are completely separate and cannot communicate.
 
-**Why it happens:** PyFLP has only been tested on FL 20+ projects. The FLP format has evolved chaotically from MIDI-like format to complex Type-length-value encoding. No official format documentation exists.
+**Why it happens:**
+FL Studio has THREE separate Python scripting environments: MIDI Controller Scripts (the FL Bridge), Piano Roll Scripts (ComposeWithBridge.pyscript), and Edison/Audio Scripts. Each runs in its own interpreter with different available modules. There is no inter-script communication mechanism.
 
-**Consequences:**
-- Can't read user's existing projects
-- Parse errors on legacy files
-- Limited to FL 20+ projects only
+**How to avoid:**
+1. Do NOT plan to use Edison scripting for sample manipulation -- it cannot be triggered programmatically from MIDI scripts
+2. Do sample manipulation in Node.js using JavaScript audio libraries instead
+3. If Edison-style DSP is needed, implement it in Node.js (JavaScript can do the same per-sample math)
+4. The only connection path from MCP server to Edison would be: write an Edison .pyscript file (like ComposeWithBridge), then instruct user to open Edison and run the script manually -- but this is a poor UX
 
-**Prevention:**
-1. Prefer using FL Studio's live API over parsing .flp files
-2. If parsing files, validate FL version first
-3. Have fallback behavior when parsing fails
-4. Don't promise to work with projects from older FL versions
+**Warning signs:**
+- Attempting to import Edison modules from MIDI controller script
+- Planning features that require Edison scripting to be automated
+- Assuming one Python environment can access another
 
-**Detection:** "Parse error" or malformed data from older .flp files
+**Phase to address:** Architecture design (decide early: all DSP in Node.js)
 
-**Phase to address:** Low priority - Use live API instead of file parsing
-
-**Sources:** [PyFLP GitHub](https://github.com/demberto/PyFLP)
-
----
-
-## Phase-Specific Warnings
-
-| Phase Topic | Likely Pitfall | Mitigation |
-|-------------|----------------|------------|
-| Phase 1: Connection/Infrastructure | MIDI port setup fails on Windows | Explicit loopMIDI documentation, validation tools |
-| Phase 1: Connection/Infrastructure | Initialization crashes | Defensive error handling, lazy imports |
-| Phase 1: Connection/Infrastructure | Threading conflicts | Event-driven architecture only |
-| Phase 2: Piano Roll/Patterns | Operation unsafe timing | PME flag checks, try/catch wrappers |
-| Phase 2: VST Control (Serum 2) | Parameter index instability | Name-based parameter resolution |
-| Phase 2: VST Control (Serum 2) | Can't read current values | Shadow state management |
-| Phase 2: VST Control (AD2) | MIDI mapping quirks | AD2-specific testing, CC reverse check |
-| Phase 3: Humanization | Bad randomization algorithms | Brownian noise, contextual variation |
-| Phase 4: State Reading | getParamValue broken | Don't rely on it; maintain own state |
-| Ongoing | Version compatibility breaks | Version detection, minimum version requirement |
+**Sources:** [Edison Audio Scripting API](https://il-group.github.io/FL-Studio-API-Stubs/edison_scripting/)
 
 ---
 
-## Architecture Recommendations Based on Pitfalls
+## Technical Debt Patterns
 
-Based on these pitfalls, the architecture should:
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Hardcoded Serum 2 parameter indices | Quick integration | Breaks on plugin update | Never -- always use name-based resolution |
+| Single timeout for all operations | Simple code | Parameter discovery and rendering timeout | Only in initial prototype |
+| Uniform random for humanization | Easy to implement | Sounds bad, users disable feature | Never -- brownian walk is not harder to implement |
+| No message chunking | Simple protocol | Large payloads silently fail | Until plugin control is added (small payloads are fine for notes) |
+| Destructive humanization (no undo) | Less state to manage | Users cannot iterate on humanization | Only if "re-humanize from grid" is available |
+| No shadow state for plugin params | Fewer moving parts | Cannot do relative adjustments | Only if all commands are absolute-value only |
+| Ignoring PME flags | Simpler handler code | Intermittent failures during playback | Never -- always check or catch TypeError |
 
-1. **Separate MCP handling from FL Studio execution** - MCP server runs outside FL Studio (can use async, threading, etc.), communicates via MIDI to a minimal FL Studio script
+## Integration Gotchas
 
-2. **Event-driven FL Studio script** - No threading, all operations queued and processed in OnIdle
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| Serum 2 via plugins module | Iterating all 4240 parameters every time | Cache parameter map on first discovery, invalidate on plugin change |
+| SysEx for large payloads | Sending >5KB in single SysEx message | Implement chunking using continuation byte |
+| Plugin setParamValue | Calling during unsafe state | Check PME flags or catch TypeError with retry |
+| Plugin getParamValue | Trusting returned value | Maintain shadow state, treat reads as unreliable |
+| Audio rendering | Expecting API function exists | No render API -- need UI automation or external workaround |
+| Sample loading | Expecting channels.loadSample() | No such function -- manipulate audio in Node.js, provide path to user |
+| Edison DSP | Trying to trigger from MIDI script | Use Node.js for DSP, Edison scripts are isolated |
+| Humanization timing | Applying fixed ms offset regardless of tempo | Scale offsets relative to tempo and note subdivision |
 
-3. **Robust error handling everywhere** - Every operation wrapped in try/except, especially during init
+## Performance Traps
 
-4. **Parameter abstraction layer** - Never use raw parameter indices; always resolve by name
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| Full parameter discovery (4240 iterations) on every command | Multi-second delays, possible timeout | Cache after first scan, lazy discovery | First time a plugin control command runs |
+| Sending parameter names in every response | Large SysEx messages, slow responses | Send parameter map once, reference by index afterward | When returning data for complex plugins (>100 params) |
+| Humanization recalculating for every note independently | Slow for large patterns | Pre-calculate humanization curve for the whole pattern at once | Patterns with >200 notes |
+| Debug print statements in production | FL Studio memory leak, slowdown | Conditional logging with production flag | Long sessions (>30 min) with verbose logging |
 
-5. **Shadow state for VST plugins** - Track what you set; don't trust reads
+## UX Pitfalls
 
-6. **Explicit Windows setup process** - Don't assume MIDI ports exist; validate and guide
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| "Humanize" produces worse results than quantized | User loses trust, disables feature | Use brownian walk, provide A/B preview |
+| Rendering requires manual steps (File > Export) | Breaks flow, defeats purpose of automation | Be transparent about limitation; automate what's possible |
+| "Set filter cutoff" changes wrong parameter | User thinks tool is broken | Validate parameter name match, confirm before changing |
+| No way to undo humanization | User stuck with bad results | Store original + humanized; provide re-humanize and quantize |
+| Plugin parameter changes fail silently during playback | User repeats command, nothing happens | Report PME flag conflicts; suggest stopping playback |
+| "Make it brighter" fails because current state unknown | Relative adjustments unreliable | Default to absolute: "Set brightness to 70%" |
 
-7. **Version-aware feature flags** - Detect FL Studio version, disable unsupported features
+## "Looks Done But Isn't" Checklist
 
----
+- [ ] **Humanization:** Sounds good on isolated drums -- verify it also sounds good on melodic instruments (piano, strings), and at different tempos (80, 120, 160 BPM)
+- [ ] **Humanization:** Works for 4/4 time -- verify it handles 3/4, 6/8, 5/4, and odd meters
+- [ ] **Plugin discovery:** Works for Serum 2 -- verify it works for other VSTs (Vital, Diva, native FL plugins)
+- [ ] **Plugin set:** Works when FL Studio is stopped -- verify it works during playback without "Operation unsafe" errors
+- [ ] **Plugin set:** Parameter changes via API -- verify changes are reflected in plugin UI (not just shadow state)
+- [ ] **Swing:** Percentage-based shift works -- verify swing interacts correctly with humanization (applied in right order)
+- [ ] **Large payloads:** Works with 10 parameters -- verify works with 200+ parameters (chunking needed)
+- [ ] **Timeout:** Quick operations work -- verify that slow operations (discovery, batch set) have appropriate timeouts
+- [ ] **Rendering:** If workaround found -- verify rendered audio matches what user hears in FL Studio (same sample rate, bit depth, length)
+- [ ] **File paths:** Works with ASCII paths -- verify with unicode characters, spaces, and long paths (>200 chars)
+
+## Recovery Strategies
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| Bad humanization algorithm | LOW | Replace distribution model (brownian walk), existing interface stays same |
+| Hardcoded parameter indices | MEDIUM | Build name-based lookup, migrate all references |
+| No message chunking (large payloads fail) | MEDIUM | Implement chunking on both sides, requires protocol change |
+| No render API discovered late | HIGH | Redesign rendering feature, may need to descope |
+| No sample loading API discovered late | HIGH | Redesign sample workflow to be Node.js-only with manual FL Studio steps |
+| Shadow state divergence | LOW | Add "sync" command, accept manual changes may cause drift |
+| Double humanization | LOW | Add grid-reset before re-humanize, store original data |
+| Timeout too short | LOW | Add per-command timeout configuration |
+
+## Pitfall-to-Phase Mapping
+
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| Uniform random humanization (#1) | Humanization Engine | A/B test: humanized vs quantized, humanized should always sound better |
+| Context-free velocity (#2) | Humanization Engine | Downbeats are consistently louder than upbeats in output |
+| Linear swing (#3) | Humanization Engine | Swing + humanization combo sounds musical, not mechanical |
+| VST parameter instability (#4) | Generic Plugin Control | Same command works before and after simulated plugin update |
+| getParamValue broken (#5) | Generic Plugin Control | Shadow state tracks all setParamValue calls accurately |
+| No render API (#6) | Audio Rendering | Feasibility spike completed BEFORE planning implementation |
+| No sample loading API (#7) | Sample Manipulation | Feasibility spike completed BEFORE planning implementation |
+| SysEx size limits (#8) | Generic Plugin Control | 200+ parameter discovery response arrives intact |
+| Timeout issues (#9) | Generic Plugin Control | Parameter discovery for complex VST completes without timeout |
+| PME flags (#10) | Generic Plugin Control | Parameter changes work during playback |
+| Serum 2 complexity (#11) | Serum 2 Integration | Top 50 parameters discoverable and settable by name |
+| Double humanization (#12) | Humanization Engine | Re-humanize returns to grid first, prevents accumulation |
+| State sync drift (#13) | All phases | Fresh state query before operations that depend on current state |
+| Windows file paths (#14) | Audio/Sample phases | Tests pass with unicode and long path samples |
+| Tempo-relative humanization (#15) | Humanization Engine | Same humanization settings sound appropriate at 80 and 160 BPM |
+| Edison script isolation (#16) | Architecture design | All DSP implemented in Node.js, no Edison dependency |
 
 ## Sources
 
 ### High Confidence (Official Documentation)
-- [FL Studio MIDI Scripting Manual](https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/midi_scripting.htm)
-- [FL Studio Python API Stubs](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/)
-- [FL Classes - Safety Documentation](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/fl_classes/)
+- [FL Studio Plugins Module API](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/plugins/) -- parameter discovery and control functions
+- [FL Studio PME Flags](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/midi/pme%20flags/) -- operation safety flags
+- [FL Studio Channels Properties](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/channels/properties/) -- no sample loading functions exist
+- [FL Studio Edison Scripting](https://il-group.github.io/FL-Studio-API-Stubs/edison_scripting/) -- separate scripting environment
+- [FL Studio MIDI Scripting Manual](https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/midi_scripting.htm) -- security constraints
 
 ### Medium Confidence (Community + Official Verification)
-- [FL Studio MIDI Scripting 101 Guide](https://flmidi-101.readthedocs.io/en/latest/scripting/fl_midi_api.html)
-- [Flapi Remote Control Project](https://github.com/MaddyGuthridge/Flapi)
-- [FL Param Checker Tool](https://github.com/MaddyGuthridge/fl_param_checker)
+- [FL Studio VST3 Parameter ID Issue](https://forum.image-line.com/viewtopic.php?t=299601) -- parameter instability confirmed
+- [Will Python API Get Fixed?](https://forum.image-line.com/viewtopic.php?t=272593) -- getParamValue acknowledged broken
+- [Serum 2 Official](https://xferrecords.com/products/serum-2) -- feature list and parameter scope
+- [MIDI Humanizer (brownian noise)](https://github.com/vincerubinetti/midi-humanizer) -- humanization algorithm reference
 
-### Lower Confidence (Forum Discussions, May Be Dated)
-- [FL Scripting API Functionality Discussion](https://forum.image-line.com/viewtopic.php?t=309492)
-- [VST3 Parameter ID Issue](https://forum.image-line.com/viewtopic.php?t=299601)
-- [Will Python API Get Fixed?](https://forum.image-line.com/viewtopic.php?t=272593)
+### Lower Confidence (Community Knowledge, Best Practices)
+- [Splice: Humanize Your Drums](https://splice.com/blog/humanize-your-drums/) -- humanization techniques
+- [Unison: How to Humanize MIDI](https://unison.audio/how-to-humanize-midi/) -- velocity and timing patterns
+- [Slam Tracks: Humanizing MIDI Drums](https://www.slamtracks.com/2025/12/20/5-secrets-to-humanizing-midi-drums/) -- velocity range recommendations
+- [Apple Logic Pro: Swing Quantize](https://support.apple.com/guide/logicpro/quantize-parameter-values-lgcp47452db8/mac) -- swing implementation reference
 
 ---
-
-*This document should be reviewed against actual implementation experience. Pitfalls marked LOW confidence need validation through direct testing.*
+*Pitfalls research for: FL Studio MCP Server v2.0 Production Pipeline*
+*Researched: 2026-02-23*
