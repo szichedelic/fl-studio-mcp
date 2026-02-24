@@ -19,6 +19,8 @@ import { z } from 'zod';
 import { generateChordProgression } from '../music/chords.js';
 import { generateMelody, generateBassLine } from '../music/melody.js';
 import { getAvailableScales, getScaleInfo } from '../music/scales.js';
+import { writePyscript } from '../music/pyscript-writer.js';
+import { humanize as humanizeNotes } from '../music/humanize/index.js';
 import type { NoteData } from '../music/types.js';
 
 const TRIGGER_HINT = 'Run ComposeWithBridge from Piano Roll > Tools > Scripting to apply.';
@@ -95,6 +97,10 @@ export function registerNoteTools(
       .default(false)
       .optional()
       .describe('Clear existing notes first'),
+    humanize: z.enum(['tight', 'loose', 'jazz', 'lo-fi']).optional()
+      .describe('Apply humanization preset to generated notes'),
+    humanize_instrument: z.enum(['drums', 'piano', 'bass', 'synth', 'default']).optional()
+      .describe('Instrument profile for velocity humanization'),
   };
 
   const melodySchema = {
@@ -117,6 +123,10 @@ export function registerNoteTools(
       .default(false)
       .optional()
       .describe('Clear existing notes first'),
+    humanize: z.enum(['tight', 'loose', 'jazz', 'lo-fi']).optional()
+      .describe('Apply humanization preset to generated notes'),
+    humanize_instrument: z.enum(['drums', 'piano', 'bass', 'synth', 'default']).optional()
+      .describe('Instrument profile for velocity humanization'),
   };
 
   const bassLineSchema = {
@@ -136,6 +146,10 @@ export function registerNoteTools(
       .default(false)
       .optional()
       .describe('Clear existing notes first'),
+    humanize: z.enum(['tight', 'loose', 'jazz', 'lo-fi']).optional()
+      .describe('Apply humanization preset to generated notes'),
+    humanize_instrument: z.enum(['drums', 'piano', 'bass', 'synth', 'default']).optional()
+      .describe('Instrument profile for velocity humanization'),
   };
 
   const scaleInfoSchema = {
@@ -155,6 +169,10 @@ export function registerNoteTools(
     addNotesSchema,
     async ({ notes, channel, clearFirst }) => {
       try {
+        // Write .pyscript with embedded note data (Node.js has full FS access)
+        writePyscript('add_notes', notes as NoteData[], clearFirst);
+
+        // Tell FL Bridge to open piano roll and select channel
         const result = await connection.executeCommand('pianoroll.addNotes', {
           notes,
           channel,
@@ -189,9 +207,9 @@ export function registerNoteTools(
     'create_chord_progression',
     'Generate a chord progression from roman numerals (e.g. I-V-vi-IV) and stage it in FL Studio piano roll.',
     chordProgressionSchema,
-    async ({ key, scale, progression, octave, beatsPerChord, velocity, channel, clearFirst }) => {
+    async ({ key, scale, progression, octave, beatsPerChord, velocity, channel, clearFirst, humanize, humanize_instrument }) => {
       try {
-        const notes = generateChordProgression({
+        let notes = generateChordProgression({
           key,
           scale,
           progression,
@@ -199,6 +217,20 @@ export function registerNoteTools(
           beatsPerChord,
           velocity,
         });
+
+        // Apply humanization if requested
+        let humanizeInfo = '';
+        if (humanize) {
+          const hResult = humanizeNotes(notes, {
+            preset: humanize,
+            velocity: humanize_instrument ? { instrument: humanize_instrument } : undefined,
+          });
+          notes = hResult.notes;
+          humanizeInfo = `\nHumanized with "${humanize}" preset (seed: ${hResult.seed}, transforms: ${hResult.applied.join(', ')})`;
+        }
+
+        // Write .pyscript with embedded note data
+        writePyscript('add_notes', notes, clearFirst);
 
         const result = await connection.executeCommand('pianoroll.addNotes', {
           notes,
@@ -211,6 +243,7 @@ export function registerNoteTools(
           `Generated ${progression.length} chords: ${chordNames} in ${key} ${scale}.`,
           `${notes.length} notes staged across ${progression.length * beatsPerChord} beats.`,
           `Octave: ${octave}, Velocity: ${velocity}`,
+          humanizeInfo,
           '',
           TRIGGER_HINT,
           '',
@@ -237,9 +270,9 @@ export function registerNoteTools(
     'create_melody',
     'Generate a scale-locked melody and stage it in FL Studio piano roll.',
     melodySchema,
-    async ({ key, scale, octave, bars, noteDensity, direction, velocity, channel, clearFirst }) => {
+    async ({ key, scale, octave, bars, noteDensity, direction, velocity, channel, clearFirst, humanize, humanize_instrument }) => {
       try {
-        const notes = generateMelody({
+        let notes = generateMelody({
           key,
           scale,
           octave,
@@ -248,6 +281,20 @@ export function registerNoteTools(
           direction,
           velocity,
         });
+
+        // Apply humanization if requested
+        let humanizeInfo = '';
+        if (humanize) {
+          const hResult = humanizeNotes(notes, {
+            preset: humanize,
+            velocity: humanize_instrument ? { instrument: humanize_instrument } : undefined,
+          });
+          notes = hResult.notes;
+          humanizeInfo = `\nHumanized with "${humanize}" preset (seed: ${hResult.seed}, transforms: ${hResult.applied.join(', ')})`;
+        }
+
+        // Write .pyscript with embedded note data
+        writePyscript('add_notes', notes, clearFirst);
 
         const result = await connection.executeCommand('pianoroll.addNotes', {
           notes,
@@ -259,6 +306,7 @@ export function registerNoteTools(
         const text = [
           `Generated melody in ${key} ${scale}, ${bars} bars, ${noteDensity} density, ${direction} direction.`,
           summary,
+          humanizeInfo,
           '',
           TRIGGER_HINT,
           '',
@@ -293,9 +341,11 @@ export function registerNoteTools(
       velocity,
       channel,
       clearFirst,
+      humanize,
+      humanize_instrument,
     }) => {
       try {
-        const notes = generateBassLine({
+        let notes = generateBassLine({
           key,
           scale,
           chordProgression,
@@ -304,6 +354,20 @@ export function registerNoteTools(
           style,
           velocity,
         });
+
+        // Apply humanization if requested
+        let humanizeInfo = '';
+        if (humanize) {
+          const hResult = humanizeNotes(notes, {
+            preset: humanize,
+            velocity: humanize_instrument ? { instrument: humanize_instrument } : undefined,
+          });
+          notes = hResult.notes;
+          humanizeInfo = `\nHumanized with "${humanize}" preset (seed: ${hResult.seed}, transforms: ${hResult.applied.join(', ')})`;
+        }
+
+        // Write .pyscript with embedded note data
+        writePyscript('add_notes', notes, clearFirst);
 
         const result = await connection.executeCommand('pianoroll.addNotes', {
           notes,
@@ -317,6 +381,7 @@ export function registerNoteTools(
           `Generated ${style} bass line following ${chordNames} in ${key} ${scale}.`,
           summary,
           `Octave: ${octave}, Velocity: ${velocity}`,
+          humanizeInfo,
           '',
           TRIGGER_HINT,
           '',
@@ -399,6 +464,9 @@ export function registerNoteTools(
     clearNotesSchema,
     async ({ channel }) => {
       try {
+        // Write .pyscript with clear action
+        writePyscript('clear');
+
         const result = await connection.executeCommand('pianoroll.clearNotes', {
           channel,
         });
