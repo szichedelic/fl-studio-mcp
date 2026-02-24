@@ -9,6 +9,9 @@ REGISTERED HANDLERS:
 - plugins.discover: Discover all named parameters of a plugin
 - plugins.get_param: Read a single parameter value by index
 - plugins.set_param: Write a single parameter value by index
+- plugins.next_preset: Navigate to next preset and return its name
+- plugins.prev_preset: Navigate to previous preset and return its name
+- plugins.preset_count: Get total preset count and current preset name
 
 PARAMETER INDEXING:
 ===================
@@ -269,7 +272,150 @@ def handle_plugin_set_param(params: Dict[str, Any]) -> Dict[str, Any]:
         return {'success': False, 'error': str(e)}
 
 
+def handle_plugin_next_preset(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Navigate to the next preset in the plugin's preset list.
+
+    Args:
+        params: {
+            index (int, optional): Channel index. Default: selected channel.
+            slotIndex (int, optional): Mixer effect slot. Default: -1 (channel rack).
+        }
+
+    Returns:
+        dict: {
+            success: True,
+            presetName: str,
+            channelIndex: int,
+            slotIndex: int
+        }
+    """
+    try:
+        if plugins is None:
+            return {'success': False, 'error': 'Plugins module not available'}
+        if channels is None:
+            return {'success': False, 'error': 'Channels module not available'}
+
+        index = params.get('index', channels.selectedChannel())
+        slot_index = params.get('slotIndex', -1)
+
+        if not plugins.isValid(index, slot_index):
+            return {
+                'success': False,
+                'error': f'No valid plugin at channel {index}, slot {slot_index}'
+            }
+
+        plugins.nextPreset(index, slot_index)
+        preset_name = plugins.getName(index, slot_index, 6, 0)  # 6 = FPN_Preset
+        return {
+            'success': True,
+            'presetName': preset_name,
+            'channelIndex': index,
+            'slotIndex': slot_index
+        }
+
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+
+def handle_plugin_prev_preset(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Navigate to the previous preset in the plugin's preset list.
+
+    Args:
+        params: {
+            index (int, optional): Channel index. Default: selected channel.
+            slotIndex (int, optional): Mixer effect slot. Default: -1 (channel rack).
+        }
+
+    Returns:
+        dict: {
+            success: True,
+            presetName: str,
+            channelIndex: int,
+            slotIndex: int
+        }
+    """
+    try:
+        if plugins is None:
+            return {'success': False, 'error': 'Plugins module not available'}
+        if channels is None:
+            return {'success': False, 'error': 'Channels module not available'}
+
+        index = params.get('index', channels.selectedChannel())
+        slot_index = params.get('slotIndex', -1)
+
+        if not plugins.isValid(index, slot_index):
+            return {
+                'success': False,
+                'error': f'No valid plugin at channel {index}, slot {slot_index}'
+            }
+
+        plugins.prevPreset(index, slot_index)
+        preset_name = plugins.getName(index, slot_index, 6, 0)  # 6 = FPN_Preset
+        return {
+            'success': True,
+            'presetName': preset_name,
+            'channelIndex': index,
+            'slotIndex': slot_index
+        }
+
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+
+def handle_plugin_preset_count(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Get the total number of presets for a plugin.
+
+    Args:
+        params: {
+            index (int, optional): Channel index. Default: selected channel.
+            slotIndex (int, optional): Mixer effect slot. Default: -1 (channel rack).
+        }
+
+    Returns:
+        dict: {
+            success: True,
+            presetCount: int,
+            currentPreset: str,
+            channelIndex: int,
+            slotIndex: int
+        }
+    """
+    try:
+        if plugins is None:
+            return {'success': False, 'error': 'Plugins module not available'}
+        if channels is None:
+            return {'success': False, 'error': 'Channels module not available'}
+
+        index = params.get('index', channels.selectedChannel())
+        slot_index = params.get('slotIndex', -1)
+
+        if not plugins.isValid(index, slot_index):
+            return {
+                'success': False,
+                'error': f'No valid plugin at channel {index}, slot {slot_index}'
+            }
+
+        count = plugins.getPresetCount(index, slot_index)
+        current_name = plugins.getName(index, slot_index, 6, 0)  # 6 = FPN_Preset
+        return {
+            'success': True,
+            'presetCount': count,
+            'currentPreset': current_name,
+            'channelIndex': index,
+            'slotIndex': slot_index
+        }
+
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+
 # Register all plugin handlers
 register_handler('plugins.discover', handle_plugin_discover)
 register_handler('plugins.get_param', handle_plugin_get_param)
 register_handler('plugins.set_param', handle_plugin_set_param)
+register_handler('plugins.next_preset', handle_plugin_next_preset)
+register_handler('plugins.prev_preset', handle_plugin_prev_preset)
+register_handler('plugins.preset_count', handle_plugin_preset_count)
