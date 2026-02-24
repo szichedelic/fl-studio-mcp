@@ -17,23 +17,23 @@ import { paramCache } from '../plugins/param-cache.js';
 import { shadowState } from '../plugins/shadow-state.js';
 import type { DiscoveredParam } from '../plugins/types.js';
 
-/** Shape of plugins.discover response data */
+/** Shape of plugins.discover response (top-level keys from Python handler) */
 interface DiscoverData {
   channelIndex?: number;
   pluginName?: string;
-  params?: DiscoveredParam[];
+  parameters?: DiscoveredParam[];
 }
 
-/** Shape of plugins.get_param response data */
+/** Shape of plugins.get_param response (top-level keys from Python handler) */
 interface GetParamData {
   value?: number;
-  displayString?: string;
+  valueString?: string;
 }
 
-/** Shape of plugins.set_param response data */
+/** Shape of plugins.set_param response (top-level keys from Python handler) */
 interface SetParamData {
   readBack?: number;
-  displayString?: string;
+  valueString?: string;
 }
 
 /**
@@ -55,10 +55,10 @@ async function autoDiscover(
     return undefined;
   }
 
-  const data = (result.data ?? {}) as DiscoverData;
+  const data = result as unknown as DiscoverData;
   const actualChannel = data.channelIndex ?? channelIndex ?? 0;
   const pluginName = data.pluginName ?? 'Unknown';
-  const params = data.params ?? [];
+  const params = data.parameters ?? [];
 
   paramCache.store(actualChannel, slotIndex, pluginName, params);
   shadowState.populateFromDiscovery(actualChannel, slotIndex, params);
@@ -207,9 +207,9 @@ export function registerPluginTools(
           slotIndex,
         });
 
-        const data = (result.data ?? {}) as GetParamData;
+        const data = result as unknown as GetParamData;
         const liveValue = data.value;
-        const displayStr = data.displayString;
+        const displayStr = data.valueString;
 
         // Check shadow state
         const shadow = shadowState.get(actualChannel, slotIndex, resolved.index);
@@ -306,9 +306,9 @@ export function registerPluginTools(
         // Update shadow state
         shadowState.set(actualChannel, slotIndex, resolved.index, value);
 
-        const data = (result.data ?? {}) as SetParamData;
+        const data = result as unknown as SetParamData;
         const readBack = data.readBack;
-        const displayStr = data.displayString;
+        const displayStr = data.valueString;
 
         const lines: string[] = [
           `Set "${resolved.name}" = ${value.toFixed(4)}`,
