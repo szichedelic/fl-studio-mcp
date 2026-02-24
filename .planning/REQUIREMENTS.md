@@ -22,12 +22,12 @@ Requirements for milestone v2.0 Production Pipeline. Each maps to roadmap phases
 
 ### Humanization
 
-- [ ] **HUM-01**: User can humanize notes with Brownian-walk timing push/pull that creates natural drift patterns
-- [ ] **HUM-02**: User can apply velocity variation with per-instrument profiles (drums, piano, bass, synths)
-- [ ] **HUM-03**: User can apply swing/groove (50-75% range) to any note pattern
-- [ ] **HUM-04**: User can vary note lengths per beat position (legato vs staccato)
-- [ ] **HUM-05**: User can apply context-aware humanization (tight for fast passages, loose for slow)
-- [ ] **HUM-06**: User can select named humanization presets ("tight", "loose", "jazz", "lo-fi") with beat-position awareness
+- [x] **HUM-01**: User can humanize notes with Brownian-walk timing push/pull that creates natural drift patterns
+- [x] **HUM-02**: User can apply velocity variation with per-instrument profiles (drums, piano, bass, synths)
+- [x] **HUM-03**: User can apply swing/groove (50-75% range) to any note pattern
+- [x] **HUM-04**: User can vary note lengths per beat position (legato vs staccato)
+- [x] **HUM-05**: User can apply context-aware humanization (tight for fast passages, loose for slow)
+- [x] **HUM-06**: User can select named humanization presets ("tight", "loose", "jazz", "lo-fi") with beat-position awareness
 
 ### Plugin Control
 
@@ -98,12 +98,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HUM-01 | Phase 3 | Pending |
-| HUM-02 | Phase 3 | Pending |
-| HUM-03 | Phase 3 | Pending |
-| HUM-04 | Phase 3 | Pending |
-| HUM-05 | Phase 3 | Pending |
-| HUM-06 | Phase 3 | Pending |
+| HUM-01 | Phase 3 | Complete |
+| HUM-02 | Phase 3 | Complete |
+| HUM-03 | Phase 3 | Complete |
+| HUM-04 | Phase 3 | Complete |
+| HUM-05 | Phase 3 | Complete |
+| HUM-06 | Phase 3 | Complete |
 | PLUG-01 | Phase 4 | Pending |
 | PLUG-02 | Phase 4 | Pending |
 | PLUG-03 | Phase 4 | Pending |
@@ -126,4 +126,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-23*
-*Last updated: 2026-02-23 after roadmap creation*
+*Last updated: 2026-02-24 after Phase 3 complete*
