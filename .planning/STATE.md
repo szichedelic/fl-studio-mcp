@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-23)
 ## Current Position
 
 Phase: 4 of 7 (Generic Plugin Control)
-Plan: 1 of 3
+Plan: 2 of 3
 Status: In progress
-Last activity: 2026-02-24 — Completed 04-01-PLAN.md (SysEx Response Chunking)
+Last activity: 2026-02-24 — Completed 04-02-PLAN.md (Plugin Parameter Backend)
 
-Progress: [########░░] 77% (10/13 plans complete)
+Progress: [########░░] 85% (11/13 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
-- Average duration: ~9 min
-- Total execution time: ~85 min
+- Total plans completed: 11
+- Average duration: ~8 min
+- Total execution time: ~87 min
 
 **By Phase:**
 
@@ -30,7 +30,7 @@ Progress: [########░░] 77% (10/13 plans complete)
 | 01 | 3 | ~64 min | ~21 min |
 | 02 | 3 | ~10 min | ~3 min |
 | 03 | 3 | ~8 min | ~2.7 min |
-| 04 | 1 | ~3 min | ~3 min |
+| 04 | 2 | ~5 min | ~2.5 min |
 
 ## Accumulated Context
 
@@ -56,6 +56,9 @@ Progress: [########░░] 77% (10/13 plans complete)
 - [04-01]: MAX_PAYLOAD_BYTES=1800 for SysEx chunking (conservative under 2048 RtMidi buffer)
 - [04-01]: Chunking transparent to SysExCodec — reassembly builds synthetic message before decode
 - [04-01]: build_sysex_response preserved unchanged; chunked version is additive
+- [04-02]: setParamValue arg order enforced: value FIRST, then paramIndex (FL Studio API)
+- [04-02]: Three-tier param name resolution: exact -> prefix -> contains (case-insensitive)
+- [04-02]: Shadow state preserves user-set values over discovered values on re-scan
 
 ### Blockers/Concerns
 
@@ -67,5 +70,5 @@ Progress: [########░░] 77% (10/13 plans complete)
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed 04-01-PLAN.md (SysEx Response Chunking)
+Stopped at: Completed 04-02-PLAN.md (Plugin Parameter Backend)
 Resume file: None
