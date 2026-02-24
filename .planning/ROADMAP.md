@@ -39,7 +39,7 @@ Plans:
 **Milestone Goal:** Transform note generation into a full creative production toolkit -- humanize MIDI, design sounds in Serum 2, render to audio, and manipulate samples.
 
 - [x] **Phase 3: Humanization Engine** - Notes sound human with timing drift, velocity curves, swing, and articulation
-- [ ] **Phase 4: Generic Plugin Control** - Discover and control any VST parameter by name
+- [x] **Phase 4: Generic Plugin Control** - Discover and control any VST parameter by name
 - [ ] **Phase 5: Serum 2 Sound Design** - Create and shape sounds in Serum 2 via natural language
 - [ ] **Phase 6: Audio Rendering Workflow** - Render patterns to WAV with guided workflow and automatic file detection
 - [ ] **Phase 7: Sample Manipulation** - Pitch-shift, reverse, stretch, layer, and resample audio
@@ -75,9 +75,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 04-01-PLAN.md -- SysEx response chunking (Python send-side + TypeScript receive-side)
-- [ ] 04-02-PLAN.md -- Python plugin handlers + TypeScript param cache and shadow state
-- [ ] 04-03-PLAN.md -- MCP plugin tools wiring (discover, get, set by name)
+- [x] 04-01-PLAN.md -- SysEx response chunking (Python send-side + TypeScript receive-side)
+- [x] 04-02-PLAN.md -- Python plugin handlers + TypeScript param cache and shadow state
+- [x] 04-03-PLAN.md -- MCP plugin tools wiring (discover, get, set by name)
 
 ### Phase 5: Serum 2 Sound Design
 **Goal**: Users can create and shape sounds in Serum 2 using musical language, not parameter indices
@@ -132,12 +132,12 @@ Phases execute in numeric order: 3 -> 4 -> 5 -> 6 -> 7
 | 1. Foundation & Communication | v1.0 | 3/3 | Complete | 2026-02-23 |
 | 2. Note Generation Core | v1.0 | 3/3 | Complete | 2026-02-23 |
 | 3. Humanization Engine | v2.0 | 3/3 | Complete | 2026-02-24 |
-| 4. Generic Plugin Control | v2.0 | 0/3 | Planned | - |
+| 4. Generic Plugin Control | v2.0 | 3/3 | Complete | 2026-02-25 |
 | 5. Serum 2 Sound Design | v2.0 | 0/TBD | Not started | - |
 | 6. Audio Rendering Workflow | v2.0 | 0/TBD | Not started | - |
 | 7. Sample Manipulation | v2.0 | 0/TBD | Not started | - |
 
 ---
 *Created: 2026-02-23 (v1.0 phases)*
-*Updated: 2026-02-24 (Phase 4 planned)*
+*Updated: 2026-02-25 (Phase 4 complete)*
 *v2.0 requirements: 20 | v2.0 phases: 5 | Depth: comprehensive*

@@ -31,9 +31,9 @@ Requirements for milestone v2.0 Production Pipeline. Each maps to roadmap phases
 
 ### Plugin Control
 
-- [ ] **PLUG-01**: User can discover all parameters of any loaded VST plugin by name
-- [ ] **PLUG-02**: User can get and set any VST parameter by name (not index)
-- [ ] **PLUG-03**: System maintains shadow state for all parameter changes to work around getParamValue bugs
+- [x] **PLUG-01**: User can discover all parameters of any loaded VST plugin by name
+- [x] **PLUG-02**: User can get and set any VST parameter by name (not index)
+- [x] **PLUG-03**: System maintains shadow state for all parameter changes to work around getParamValue bugs
 
 ### Serum 2 Sound Design
 
@@ -104,9 +104,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HUM-04 | Phase 3 | Complete |
 | HUM-05 | Phase 3 | Complete |
 | HUM-06 | Phase 3 | Complete |
-| PLUG-01 | Phase 4 | Pending |
-| PLUG-02 | Phase 4 | Pending |
-| PLUG-03 | Phase 4 | Pending |
+| PLUG-01 | Phase 4 | Complete |
+| PLUG-02 | Phase 4 | Complete |
+| PLUG-03 | Phase 4 | Complete |
 | SER-01 | Phase 5 | Pending |
 | SER-02 | Phase 5 | Pending |
 | SER-03 | Phase 5 | Pending |
@@ -126,4 +126,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-23*
-*Last updated: 2026-02-24 after Phase 3 complete*
+*Last updated: 2026-02-25 after Phase 4 complete*
