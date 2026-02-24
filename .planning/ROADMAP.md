@@ -1,198 +1,141 @@
 # Roadmap: FL Studio MCP Server
 
-## Overview
+## Milestones
 
-This roadmap delivers an MCP server enabling natural language control of FL Studio for music production. The journey progresses from establishing reliable communication with FL Studio (via MIDI SysEx bridge), through core composition capabilities (note generation, piano roll, drums), to quality features (humanization, mixer control, VST integration), and finally to arrangement control. Each phase delivers a coherent, verifiable capability that builds toward the north star: write and build complex music in any genre using natural language, with human feel.
+- Completed: **v1.0 Foundation & Note Generation** - Phases 1-2 (shipped 2026-02-23)
+- In progress: **v2.0 Production Pipeline** - Phases 3-7
 
 ## Phases
 
-**Phase Numbering:**
-- Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
-
-Decimal phases appear between their surrounding integers in numeric order.
-
-- [x] **Phase 1: Foundation & Communication** - MCP server + FL Bridge + reliable bidirectional communication
-- [ ] **Phase 2: Note Generation Core** - Create notes, chords, melodies, bass lines from natural language
-- [ ] **Phase 3: Piano Roll Editing** - Edit existing notes in patterns
-- [ ] **Phase 4: Drum Patterns** - Generate drum patterns with groove
-- [ ] **Phase 5: Basic Humanization** - Timing and velocity variation that breathes
-- [ ] **Phase 6: Mixer Control** - Volume, pan, routing, sidechain
-- [ ] **Phase 7: Generic Plugin Control** - Parameter control foundation for VSTs
-- [ ] **Phase 8: VST Integration** - Serum 2 sound design + Addictive Drums 2 control
-- [ ] **Phase 9: Deep Humanization & Abstraction** - Advanced humanization + multi-level creative control
-- [ ] **Phase 10: Arrangement** - Playlist/timeline control for song structure
-
-## Phase Details
+<details>
+<summary>v1.0 Foundation & Note Generation (Phases 1-2) - SHIPPED 2026-02-23</summary>
 
 ### Phase 1: Foundation & Communication
 **Goal**: Establish reliable bidirectional communication between MCP client and FL Studio
 **Depends on**: Nothing (first phase)
 **Requirements**: FOUND-01, FOUND-02, FOUND-03
 **Plans**: 3 plans
-**Success Criteria** (what must be TRUE):
-  1. User can start MCP server and it connects to FL Studio without errors
-  2. User can control transport (play/stop/record) via natural language
-  3. User can query current project state (patterns, tracks, mixer channels) and get accurate response
-  4. User can select and create patterns via natural language
 
 Plans:
-- [ ] 01-01-PLAN.md — MCP server scaffolding + SysEx codec + MIDI client
-- [ ] 01-02-PLAN.md — FL Bridge Python script with safe initialization
-- [ ] 01-03-PLAN.md — Transport control + state reading + pattern operations
+- [x] 01-01: MCP server scaffolding + SysEx codec + MIDI client
+- [x] 01-02: FL Bridge Python script with safe initialization
+- [x] 01-03: Transport control + state reading + pattern operations
 
 ### Phase 2: Note Generation Core
 **Goal**: Users can create musical content from natural language descriptions
 **Depends on**: Phase 1
 **Requirements**: COMP-01, COMP-02, COMP-03, COMP-04, COMP-06
 **Plans**: 3 plans
-**Success Criteria** (what must be TRUE):
-  1. User can say "create a C major chord progression" and notes appear in piano roll
-  2. User can say "write a melancholic melody in A minor" and get appropriate notes
-  3. User can say "add a bass line following the chords" and get bass notes
-  4. User can specify a key/scale and all generated notes conform to it
-  5. Generated notes are placed in the correct pattern with correct timing
 
 Plans:
-- [ ] 02-01-PLAN.md — Music theory engine (tonal library, scales, chords, melody/bass generators)
-- [ ] 02-02-PLAN.md — FL Bridge pianoroll handler + ComposeWithBridge.pyscript
-- [ ] 02-03-PLAN.md — MCP note tools wiring theory engine to FL Bridge
+- [x] 02-01: Music theory engine (tonal library, scales, chords, melody/bass generators)
+- [x] 02-02: FL Bridge pianoroll handler + ComposeWithBridge.pyscript
+- [x] 02-03: MCP note tools wiring theory engine to FL Bridge
 
-### Phase 3: Piano Roll Editing
-**Goal**: Users can edit existing notes in patterns
-**Depends on**: Phase 2
-**Requirements**: PIANO-01
+</details>
+
+### v2.0 Production Pipeline (In Progress)
+
+**Milestone Goal:** Transform note generation into a full creative production toolkit -- humanize MIDI, design sounds in Serum 2, render to audio, and manipulate samples.
+
+- [ ] **Phase 3: Humanization Engine** - Notes sound human with timing drift, velocity curves, swing, and articulation
+- [ ] **Phase 4: Generic Plugin Control** - Discover and control any VST parameter by name
+- [ ] **Phase 5: Serum 2 Sound Design** - Create and shape sounds in Serum 2 via natural language
+- [ ] **Phase 6: Audio Rendering Workflow** - Render patterns to WAV with guided workflow and automatic file detection
+- [ ] **Phase 7: Sample Manipulation** - Pitch-shift, reverse, stretch, layer, and resample audio
+
+## Phase Details
+
+### Phase 3: Humanization Engine
+**Goal**: Generated music sounds human -- timing breathes, dynamics vary, groove feels alive
+**Depends on**: Phase 2 (requires NoteData[] to transform)
+**Requirements**: HUM-01, HUM-02, HUM-03, HUM-04, HUM-05, HUM-06
 **Success Criteria** (what must be TRUE):
-  1. User can select notes by description ("the third note", "notes above C5")
-  2. User can move, delete, or modify selected notes
-  3. User can see what notes exist before editing (read + write cycle works)
+  1. User can humanize a pattern and hear Brownian-walk timing drift that sounds organic, not random noise
+  2. User can apply velocity variation with instrument-appropriate profiles (e.g., drums emphasize ghost notes, piano breathes dynamically)
+  3. User can apply swing (50-75%) and hear groove shift on off-beat notes
+  4. User can get context-aware humanization where fast passages stay tight and slow passages breathe more
+  5. User can select named presets ("tight", "loose", "jazz", "lo-fi") and hear distinctly different humanization character
 **Plans**: TBD
 
 Plans:
-- [ ] 03-01: Note reading + selection + modification
+- [ ] 03-01: TBD
+- [ ] 03-02: TBD
 
-### Phase 4: Drum Patterns
-**Goal**: Users can create drum patterns from natural language
-**Depends on**: Phase 2 (shares note creation patterns)
-**Requirements**: COMP-05
+### Phase 4: Generic Plugin Control
+**Goal**: Users can discover and manipulate any loaded VST plugin's parameters by name
+**Depends on**: Phase 1 (FL Bridge for SysEx commands)
+**Requirements**: PLUG-01, PLUG-02, PLUG-03
 **Success Criteria** (what must be TRUE):
-  1. User can say "create a four-on-the-floor kick pattern" and get appropriate drum notes
-  2. User can say "add hi-hats with swing" and get rhythmically appropriate placement
-  3. User can specify genre (e.g., "trap hi-hats", "jazz ride pattern") and get stylistically correct output
+  1. User can ask "what parameters does this plugin have?" and get a filtered list of real parameter names (not 4240 blank slots)
+  2. User can set any VST parameter by its name (e.g., "set Filter Cutoff to 75%") and the plugin responds
+  3. User can read parameter values reliably even when FL Studio's getParamValue is buggy (shadow state fills the gap)
+  4. Parameter name resolution survives plugin version updates (name-based, not index-based)
 **Plans**: TBD
 
 Plans:
-- [ ] 04-01: Drum pattern generation with genre templates
+- [ ] 04-01: TBD
+- [ ] 04-02: TBD
 
-### Phase 5: Basic Humanization
-**Goal**: Generated music sounds human, not robotic
-**Depends on**: Phase 2, Phase 4 (requires notes to humanize)
-**Requirements**: HUMAN-01
+### Phase 5: Serum 2 Sound Design
+**Goal**: Users can create and shape sounds in Serum 2 using musical language, not parameter indices
+**Depends on**: Phase 4 (generic plugin control and parameter cache must exist)
+**Requirements**: SER-01, SER-02, SER-03, SER-04
 **Success Criteria** (what must be TRUE):
-  1. User can say "humanize this pattern" and hear perceptible but subtle timing variation
-  2. User can say "add velocity variation" and hear dynamic breathing
-  3. Humanization sounds better than quantized (not random noise that sounds worse)
-  4. Humanization amount is controllable ("subtle" vs "loose")
+  1. User can control Serum 2 oscillators, filters, macros, and FX using semantic names (e.g., "set oscillator 1 to saw, filter cutoff to 40%")
+  2. User can say "create a warm pad" and get a multi-parameter recipe applied that produces an appropriate sound
+  3. User can request parameter changes using approximate names and fuzzy matching finds the right parameter
+  4. User can browse and load Serum 2 presets via natural language
 **Plans**: TBD
 
 Plans:
-- [ ] 05-01: Timing humanization with brownian noise
-- [ ] 05-02: Velocity curves with contextual awareness (downbeats, etc.)
+- [ ] 05-01: TBD
+- [ ] 05-02: TBD
 
-### Phase 6: Mixer Control
-**Goal**: Users can control mixer from natural language
-**Depends on**: Phase 1 (uses FL Bridge)
-**Requirements**: MIX-01, MIX-02, MIX-03
+### Phase 6: Audio Rendering Workflow
+**Goal**: Users can render MIDI patterns to WAV files with a seamless guided workflow
+**Depends on**: Phase 1 (FL Bridge for state reading)
+**Requirements**: REN-01, REN-02
 **Success Criteria** (what must be TRUE):
-  1. User can say "turn down the bass track to -6dB" and mixer responds
-  2. User can say "pan the hi-hats left" and hear the result
-  3. User can say "set up sidechain from the kick to the bass" and routing is configured
-  4. User can say "create a reverb bus and send the vocals to it" and routing works
+  1. User can say "render this pattern" and receive clear step-by-step instructions (suggested filename, output path, exact FL Studio steps)
+  2. System automatically detects when a rendered WAV file appears and confirms it is ready for downstream processing
+  3. Rendered files are tracked and available for sample manipulation in Phase 7
 **Plans**: TBD
 
 Plans:
-- [ ] 06-01: Basic mixer control (volume, pan, mute, solo)
-- [ ] 06-02: Sidechain + bus/send routing
+- [ ] 06-01: TBD
 
-### Phase 7: Generic Plugin Control
-**Goal**: Foundation for controlling VST parameters
-**Depends on**: Phase 1 (uses FL Bridge)
-**Requirements**: PLUG-01
+### Phase 7: Sample Manipulation
+**Goal**: Users can transform audio samples and execute full resampling workflows
+**Depends on**: Phase 6 (needs rendered WAV files as source material)
+**Requirements**: SAM-01, SAM-02, SAM-03, SAM-04, SAM-05
 **Success Criteria** (what must be TRUE):
-  1. User can list available parameters for a plugin
-  2. User can set a parameter by name ("set filter cutoff to 50%")
-  3. Parameter changes persist correctly (shadow state if needed)
-  4. System handles plugin restarts/updates gracefully (name-based resolution)
+  1. User can pitch-shift or detune a sample and hear the result (e.g., "pitch this down an octave")
+  2. User can reverse or time-stretch a sample via natural language
+  3. User can layer multiple audio files with stereo detune effects to create rich textures
+  4. User can execute a full resampling workflow: generate notes, render to audio, manipulate the audio, and get instructions to reload into FL Studio
 **Plans**: TBD
 
 Plans:
-- [ ] 07-01: Parameter discovery and name-based resolution
-- [ ] 07-02: Parameter setting with shadow state
-
-### Phase 8: VST Integration
-**Goal**: Users can control Serum 2 and Addictive Drums 2 via natural language
-**Depends on**: Phase 7 (plugin control foundation)
-**Requirements**: PLUG-02, PLUG-03
-**Success Criteria** (what must be TRUE):
-  1. User can say "create a warm pad in Serum" and get appropriate patch configuration
-  2. User can say "add more filter movement" to an existing Serum patch
-  3. User can say "switch to brush kit in Addictive Drums" and kit changes
-  4. User can say "adjust hi-hat openness velocity curve" in AD2
-**Plans**: TBD
-
-Plans:
-- [ ] 08-01: Serum 2 parameter mapping and sound design tools
-- [ ] 08-02: Addictive Drums 2 integration (kit selection, MIDI mapping, velocity)
-
-### Phase 9: Deep Humanization & Abstraction
-**Goal**: Advanced humanization with performance artifacts, plus multi-level creative control
-**Depends on**: Phase 5 (basic humanization), Phase 2-4 (content to refine)
-**Requirements**: HUMAN-02, HUMAN-03, PIANO-02, PIANO-03
-**Success Criteria** (what must be TRUE):
-  1. User can say "make this sound more like a live performance" and hear timing drift/return, subtle overlaps
-  2. User can give high-level direction ("melancholic piano intro") or low-level tweaks ("shift note 3 up a semitone")
-  3. User can iterate quickly ("make the second phrase quieter") without re-describing full context
-  4. System maintains session memory for iterative refinement
-**Plans**: TBD
-
-Plans:
-- [ ] 09-01: Performance artifacts (overlaps, releases, timing drift)
-- [ ] 09-02: Multi-level abstraction engine
-- [ ] 09-03: Session memory for iterative refinement
-
-### Phase 10: Arrangement
-**Goal**: Users can control playlist/timeline for song structure
-**Depends on**: Phase 1-6 (patterns, mixer channels exist to arrange)
-**Requirements**: ARR-01
-**Success Criteria** (what must be TRUE):
-  1. User can say "duplicate this pattern to bar 17" and playlist updates
-  2. User can say "create an intro section with just the piano" and arrangement changes
-  3. User can say "add a chorus after the verse" and structure is created
-  4. User can say "extend this section by 8 bars" and arrangement adjusts
-**Plans**: TBD
-
-Plans:
-- [ ] 10-01: Playlist clip manipulation
-- [ ] 10-02: Song structure and section management
+- [ ] 07-01: TBD
+- [ ] 07-02: TBD
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
+Phases execute in numeric order: 3 -> 4 -> 5 -> 6 -> 7
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Foundation & Communication | 3/3 | Complete | 2026-02-23 |
-| 2. Note Generation Core | 0/3 | Not started | - |
-| 3. Piano Roll Editing | 0/1 | Not started | - |
-| 4. Drum Patterns | 0/1 | Not started | - |
-| 5. Basic Humanization | 0/2 | Not started | - |
-| 6. Mixer Control | 0/2 | Not started | - |
-| 7. Generic Plugin Control | 0/2 | Not started | - |
-| 8. VST Integration | 0/2 | Not started | - |
-| 9. Deep Humanization & Abstraction | 0/3 | Not started | - |
-| 10. Arrangement | 0/2 | Not started | - |
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1. Foundation & Communication | v1.0 | 3/3 | Complete | 2026-02-23 |
+| 2. Note Generation Core | v1.0 | 3/3 | Complete | 2026-02-23 |
+| 3. Humanization Engine | v2.0 | 0/TBD | Not started | - |
+| 4. Generic Plugin Control | v2.0 | 0/TBD | Not started | - |
+| 5. Serum 2 Sound Design | v2.0 | 0/TBD | Not started | - |
+| 6. Audio Rendering Workflow | v2.0 | 0/TBD | Not started | - |
+| 7. Sample Manipulation | v2.0 | 0/TBD | Not started | - |
 
 ---
-*Created: 2026-02-23*
-*Total requirements: 22 | Total phases: 10 | Depth: comprehensive*
+*Created: 2026-02-23 (v1.0 phases)*
+*Updated: 2026-02-23 (v2.0 phases 3-7 added)*
+*v2.0 requirements: 20 | v2.0 phases: 5 | Depth: comprehensive*

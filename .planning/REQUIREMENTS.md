@@ -98,32 +98,32 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HUM-01 | — | Pending |
-| HUM-02 | — | Pending |
-| HUM-03 | — | Pending |
-| HUM-04 | — | Pending |
-| HUM-05 | — | Pending |
-| HUM-06 | — | Pending |
-| PLUG-01 | — | Pending |
-| PLUG-02 | — | Pending |
-| PLUG-03 | — | Pending |
-| SER-01 | — | Pending |
-| SER-02 | — | Pending |
-| SER-03 | — | Pending |
-| SER-04 | — | Pending |
-| REN-01 | — | Pending |
-| REN-02 | — | Pending |
-| SAM-01 | — | Pending |
-| SAM-02 | — | Pending |
-| SAM-03 | — | Pending |
-| SAM-04 | — | Pending |
-| SAM-05 | — | Pending |
+| HUM-01 | Phase 3 | Pending |
+| HUM-02 | Phase 3 | Pending |
+| HUM-03 | Phase 3 | Pending |
+| HUM-04 | Phase 3 | Pending |
+| HUM-05 | Phase 3 | Pending |
+| HUM-06 | Phase 3 | Pending |
+| PLUG-01 | Phase 4 | Pending |
+| PLUG-02 | Phase 4 | Pending |
+| PLUG-03 | Phase 4 | Pending |
+| SER-01 | Phase 5 | Pending |
+| SER-02 | Phase 5 | Pending |
+| SER-03 | Phase 5 | Pending |
+| SER-04 | Phase 5 | Pending |
+| REN-01 | Phase 6 | Pending |
+| REN-02 | Phase 6 | Pending |
+| SAM-01 | Phase 7 | Pending |
+| SAM-02 | Phase 7 | Pending |
+| SAM-03 | Phase 7 | Pending |
+| SAM-04 | Phase 7 | Pending |
+| SAM-05 | Phase 7 | Pending |
 
 **Coverage:**
 - v2.0 requirements: 20 total
-- Mapped to phases: 0
-- Unmapped: 20 (pending roadmap creation)
+- Mapped to phases: 20
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-23*
-*Last updated: 2026-02-23 after initial definition*
+*Last updated: 2026-02-23 after roadmap creation*
