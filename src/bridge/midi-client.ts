@@ -17,6 +17,7 @@ export class MidiClient {
   private input: Input;
   private output: Output;
   private pendingRequests: Map<number, PendingRequest> = new Map();
+  private chunkBuffers: Map<number, number[][]> = new Map();
   private nextClientId = 1;
   private connected = false;
 
@@ -185,6 +186,12 @@ export class MidiClient {
   /**
    * Handle incoming MIDI message
    *
+   * Supports chunked SysEx responses: messages with continuation byte 0x01
+   * are accumulated in a per-clientId buffer. When the final chunk arrives
+   * (continuation byte 0x00), all accumulated payloads are combined into a
+   * single synthetic message for decoding. Single-chunk messages (the common
+   * case) pass through unchanged.
+   *
    * @param deltaTime - Time since last message
    * @param message - Array of MIDI bytes
    */
@@ -194,19 +201,57 @@ export class MidiClient {
       return;
     }
 
+    // Extract chunking header fields
+    const clientId = message[3];
+    const continuation = message[4];
+
+    if (continuation === 0x01) {
+      // More chunks coming -- accumulate payload bytes (between header and F7)
+      const payloadBytes = message.slice(7, -1);
+
+      if (!this.chunkBuffers.has(clientId)) {
+        this.chunkBuffers.set(clientId, []);
+      }
+      const buffer = this.chunkBuffers.get(clientId)!;
+      buffer.push(payloadBytes);
+
+      debugLog(`RX [${clientId}] chunk ${buffer.length} accumulated (${payloadBytes.length} bytes)`);
+      return; // Don't resolve yet -- wait for final chunk
+    }
+
+    // continuation === 0x00 -- final (or only) chunk
+    let decodingMessage = message;
+    const buffered = this.chunkBuffers.get(clientId);
+
+    if (buffered && buffered.length > 0) {
+      // Multi-chunk response: combine all accumulated payloads + this final chunk's payload
+      const finalPayload = message.slice(7, -1);
+      const combinedPayload = [...buffered.flat(), ...finalPayload];
+      this.chunkBuffers.delete(clientId);
+
+      // Build synthetic complete message for decoding
+      decodingMessage = [
+        ...message.slice(0, 7), // original header (F0, 7D, origin, clientId, 0x00, msgType, status)
+        ...combinedPayload,
+        0xf7,
+      ];
+
+      debugLog(`RX [${clientId}] reassembled ${buffered.length + 1} chunks (${combinedPayload.length} payload bytes)`);
+    }
+
     try {
-      const { clientId, data } = SysExCodec.decode(message);
-      debugLog(`RX [${clientId}] success=${data.success} (${message.length} bytes)`);
+      const { clientId: cid, data } = SysExCodec.decode(decodingMessage);
+      debugLog(`RX [${cid}] success=${data.success} (${decodingMessage.length} bytes)`);
 
       // Find and resolve pending request
-      const pending = this.pendingRequests.get(clientId);
+      const pending = this.pendingRequests.get(cid);
       if (pending) {
-        this.pendingRequests.delete(clientId);
+        this.pendingRequests.delete(cid);
         clearTimeout(pending.timeout);
         pending.resolve(data);
       } else {
-        debugLog(`RX [${clientId}] WARNING: no pending request`);
-        console.error(`[MidiClient] Received response for unknown clientId: ${clientId}`);
+        debugLog(`RX [${cid}] WARNING: no pending request`);
+        console.error(`[MidiClient] Received response for unknown clientId: ${cid}`);
       }
     } catch (error) {
       debugLog(`RX ERROR: ${error}`);
@@ -231,6 +276,9 @@ export class MidiClient {
       pending.reject(new Error('Disconnected'));
       this.pendingRequests.delete(clientId);
     }
+
+    // Clear chunk accumulation buffers to prevent memory leaks
+    this.chunkBuffers.clear();
 
     // Close ports
     try {
