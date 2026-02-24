@@ -37,10 +37,10 @@ Requirements for milestone v2.0 Production Pipeline. Each maps to roadmap phases
 
 ### Serum 2 Sound Design
 
-- [ ] **SER-01**: User can control Serum 2 oscillators, filters, macros, and FX via semantic names
-- [ ] **SER-02**: System uses fuzzy parameter name matching for resilience across Serum 2 versions
-- [ ] **SER-03**: User can create sounds from recipes (pad, bass, lead, pluck) that set multiple parameters at once
-- [ ] **SER-04**: User can browse and load Serum 2 presets
+- [x] **SER-01**: User can control Serum 2 oscillators, filters, macros, and FX via semantic names
+- [x] **SER-02**: System uses fuzzy parameter name matching for resilience across Serum 2 versions
+- [x] **SER-03**: User can create sounds from recipes (pad, bass, lead, pluck) that set multiple parameters at once
+- [x] **SER-04**: User can browse and load Serum 2 presets
 
 ### Audio Rendering
 
@@ -107,10 +107,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PLUG-01 | Phase 4 | Complete |
 | PLUG-02 | Phase 4 | Complete |
 | PLUG-03 | Phase 4 | Complete |
-| SER-01 | Phase 5 | Pending |
-| SER-02 | Phase 5 | Pending |
-| SER-03 | Phase 5 | Pending |
-| SER-04 | Phase 5 | Pending |
+| SER-01 | Phase 5 | Complete |
+| SER-02 | Phase 5 | Complete |
+| SER-03 | Phase 5 | Complete |
+| SER-04 | Phase 5 | Complete |
 | REN-01 | Phase 6 | Pending |
 | REN-02 | Phase 6 | Pending |
 | SAM-01 | Phase 7 | Pending |
@@ -126,4 +126,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-23*
-*Last updated: 2026-02-25 after Phase 4 complete*
+*Last updated: 2026-02-24 after Phase 5 complete*
