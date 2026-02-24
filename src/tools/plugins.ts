@@ -48,7 +48,7 @@ async function autoDiscover(
   const result = await connection.executeCommand(
     'plugins.discover',
     { index: channelIndex, slotIndex },
-    15000,
+    60000,
   );
 
   if (!result.success) {

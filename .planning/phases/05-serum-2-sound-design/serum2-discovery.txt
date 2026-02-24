@@ -1,0 +1,186 @@
+Plugin: Serum 2
+Channel: 1, Slot: -1
+Parameters: 685
+
+Naming convention: Human-readable, space-separated (e.g., "A Level", "Filter 1 Freq")
+Prefix pattern: A/B/C for oscillators, "Filter 1"/"Filter 2", "Env 1"-"Env 4", "LFO 1"-"LFO 10", "Mod 1"-"Mod 64", "Macro 1"-"Macro 8", "FX Main Param N", "FX Bus 1 Param N", "FX Bus 2 Param N"
+
+=== GLOBAL ===
+Main Vol: 0.5000
+Main Tuning: 0.5000
+Amp: 0.5000
+Porta Time: 0.0000
+Porta Curve: 0.5000
+Bend Up: 0.5417
+Bend Down: 0.4583
+Pitch Bend: 0.5000
+Mod Wheel: 0.0000
+Mono Toggle: 0.0000
+Legato: 0.0000
+Porta Always: 0.0000
+Porta Scaled: 0.0000
+Swing: 0.5000
+Swing Div: 0.5000
+Transpose: 0.5000
+Bypass: 0.0000
+Direct Vol: 0.5000
+Bus 1 Vol: 0.5000
+Bus 2 Vol: 0.5000
+
+=== OSCILLATOR A ===
+A Enable: 1.0000
+A Level: 0.7500
+A Pan: 0.5000
+A Octave: 0.5000
+A Semi: 0.5000
+A Fine: 0.5000
+A Ratio: 0.0308
+A Hz Offset: 0.5000
+A Coarse Pitch: 0.5000
+A Pitch Track: 1.0000
+A Start: 0.0000
+A End: 1.0000
+A Reverse: 0.0000
+A Scan Rate: 0.7500
+A Scan BPM Rate: 0.5000
+A Scan Key Track: 0.0000
+A Position: 0.0000
+A Loop Start: 0.0000
+A Loop End: 1.0000
+A Loop X-Fade: 0.0000
+A Loop Mode: 0.0000
+A Relative Loop: 0.0000
+A Single Slice: 0.0000
+A Slice Play Mode: 0.0000
+A Unison: 0.0000
+A Uni Stack: 0.0000
+A Uni Detune: 0.5000
+A Uni Blend: 0.7500
+A Uni Width: 1.0000
+A Uni Span: 0.5000
+A Uni Rand Start: 0.0000
+A Uni Warp: 0.5000
+A Uni Warp 2: 0.5000
+A Warp: 0.0000
+A Warp Var: 0.0000
+A Warp Mode: 0.0000
+A Warp 2: 0.0000
+A Warp 2 Var: 0.0000
+A Warp 2 Mode: 0.0000
+A WT Pos: 0.0000
+A Uni WT Pos: 0.5000
+A Phase: 0.5000
+A Rand Phase: 1.0000
+
+=== OSCILLATOR B (same structure as A) ===
+B Enable: 0.0000
+B Level: 0.7500
+B Pan/Octave/Semi/Fine/etc same pattern as A
+
+=== OSCILLATOR C (same structure as A) ===
+C Enable: 0.0000
+C Level: 0.7500
+C Pan/Octave/Semi/Fine/etc same pattern as A
+
+=== NOISE ===
+Noise Enable: 0.0000
+Noise Level: 0.2500
+Noise Pan: 0.5000
+Noise Pitch Track: 0.0000
+Noise Pitch: 0.5000
+Noise Fine: 0.5000
+Noise Phase: 0.0000
+Noise Rand Phase: 0.0000
+
+=== SUB ===
+Sub Enable: 0.0000
+Sub Level: 0.7500
+Sub Pan: 0.5000
+Sub Octave: 0.5000
+Sub Coarse Pitch: 0.5000
+Sub Pitch Track: 1.0000
+Sub Shape: 0.0000
+Sub Phase: 0.0000
+Sub Cont. Phase: 0.0000
+
+=== FILTERS ===
+Filter 1 Level: 0.5000
+Filter 1 On: 0.0000
+Filter 1 Type: 0.0094
+Filter 1 Freq: 0.5000
+Filter 1 Res: 0.1000
+Filter 1 Drive: 0.0000
+Filter 1 Var: 0.0000
+Filter 1 Wet: 1.0000
+Filter 1 Stereo: 0.5000
+Filter 1 X: 0.0000
+Filter 1 Y: 0.0000
+Filter 2 Level/On/Type/Freq/Res/Drive/Var/Wet/Stereo/X/Y same pattern
+
+=== ENVELOPES ===
+Env 1 Attack: 0.1256
+Env 1 Hold: 0.0000
+Env 1 Decay: 0.5000
+Env 1 Sustain: 1.0000
+Env 1 Release: 0.2150
+Env 1 Atk Curve: 0.5000
+Env 1 Dec Curve: 0.6660
+Env 1 Rel Curve: 0.6660
+Env 2-4 same pattern (Env 2-4 also have Start and End params)
+
+=== LFOs ===
+LFO 1 Rate: 0.5000
+LFO 1 Smooth: 0.0000
+LFO 1 Rise: 0.0000
+LFO 1 Delay: 0.0000
+LFO 1 Phase: 0.0000
+LFO 2-10 same pattern
+
+=== MODULATION ===
+Mod 1-64 Amount: 0.5000
+Mod 1-64 Out: 1.0000
+
+=== MACROS ===
+Macro 1-8: 0.0000
+
+=== ROUTING ===
+A>Filter Balance: 0.0000
+A>BUS1: 0.0000
+A>BUS2: 0.0000
+B>Filter Balance/BUS1/BUS2 same pattern
+C>Filter Balance/BUS1/BUS2 same pattern
+Noise>Filter Balance/BUS1/BUS2 same pattern
+Sub Osc>Filter Balance/BUS1/BUS2 same pattern
+Filter 1>BUS1/BUS2
+Filter 2>BUS1/BUS2
+
+=== RANDOMIZATION ===
+Osc Detune Rnd: 0.0000
+Osc Pan Rand: 0.0000
+Env Rand: 0.0000
+Cutoff Rand: 0.0000
+
+=== FX ===
+FX Main Param 1-16: 0.0000
+FX Bus 1 Param 1-16: 0.0000
+FX Bus 2 Param 1-16: 0.0000
+
+=== CLIP PLAYER ===
+Clip Player Enable: 0.0000
+Clip Player Transpose: 0.5000
+Clip Player Rate: 0.5000
+Clip Player Offset: 0.5000
+
+=== ARPEGGIATOR ===
+Arp Enable-Wrap Phantom Note: various
+
+=== SCALE ===
+Key: 0.0000
+Scale: 0.0000
+Bank: 0.0000
+
+=== MIDI CC (128 CCs) ===
+MIDI CC #0-127
+
+=== MIDI AFTERTOUCH (16 channels) ===
+MIDI Channel 1-16 Aftertouch
