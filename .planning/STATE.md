@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-25)
 
 **Core value:** Natural language to human-sounding music in FL Studio
-**Current focus:** Phase 10 - Playlist & Markers
+**Current focus:** Phase 11 - Project Controls (Phase 10 complete)
 
 ## Current Position
 
-Phase: 10 of 11 (Playlist & Markers)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-25 - Completed 10-02-PLAN.md
+Phase: 10 of 11 (Playlist & Markers) - COMPLETE
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-02-25 - Completed 10-03-PLAN.md
 
-Progress: [####################] 100% v2.0 | [███████░░░] 67% v2.1 (6/9 plans)
+Progress: [####################] 100% v2.0 | [████████░░] 78% v2.1 (7/9 plans)
 
 ## Performance Metrics
 
@@ -28,7 +28,7 @@ Progress: [####################] 100% v2.0 | [███████░░░] 67
 |-------|-------|--------|
 | 8. Mixer Core | 2/2 | Complete |
 | 9. Mixer Routing | 2/2 | Complete |
-| 10. Playlist & Markers | 2/3 | In progress |
+| 10. Playlist & Markers | 3/3 | Complete |
 | 11. Project Controls | 0/2 | Not started |
 
 ## Accumulated Context
@@ -51,6 +51,8 @@ Recent decisions affecting v2.1 work:
 - Level normalization: 0dB = 0.8, using 10^(dB/50) * 0.8 formula for dB conversion
 - MCP tools accept level in normalized (0-1), percentage (0-100), OR decibels
 - Effect slot tools: track param = channelIndex for paramCache integration
+- Live clip APIs: track 1-indexed, block 0-indexed, -1 to stop all clips
+- Performance Mode required for live clip functions to work
 
 ### From v2.0
 
@@ -67,5 +69,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Completed 10-02-PLAN.md (Marker management)
+Stopped at: Completed 10-03-PLAN.md (Live clip control)
 Resume file: None
