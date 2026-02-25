@@ -6,6 +6,7 @@
  * - sample_reverse: Reverse a WAV sample
  * - sample_timestretch: Time-stretch a WAV sample by a speed factor
  * - sample_info: Get detailed information about a WAV file
+ * - sample_layer: Layer/mix multiple files, or stereo-detune a single sample
  *
  * All tools accept render registry filenames (from list_renders) or
  * absolute file paths as input. Processed files are saved to
@@ -16,7 +17,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ConnectionManager } from '../bridge/connection.js';
 import { z } from 'zod';
 import { basename, dirname, join } from 'node:path';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, unlink } from 'node:fs/promises';
 import {
   soxRunner,
   resolveInputFile,
@@ -213,6 +214,149 @@ export function registerSampleTools(
         const msg = error instanceof Error ? error.message : String(error);
         return {
           content: [{ type: 'text' as const, text: `sample_info failed: ${msg}` }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // ── sample_layer ─────────────────────────────────────────────────
+
+  server.tool(
+    'sample_layer',
+    'Layer and mix audio files, or create a stereo-detuned version of a single sample for rich, wide textures. Supports two modes: "mix" layers multiple files together, "stereo_detune" creates a wide stereo effect from one file.',
+    {
+      inputs: z.array(z.string()).min(1).describe(
+        'Input WAV filenames (from list_renders) or absolute paths. For stereo_detune mode, provide exactly 1 file.',
+      ),
+      mode: z.enum(['mix', 'stereo_detune']).default('mix').describe(
+        'Mode: "mix" to layer multiple files together, "stereo_detune" to create a stereo-widened version of a single sample.',
+      ),
+      detuneCents: z.number().min(1).max(50).default(8).optional().describe(
+        'For stereo_detune mode: detune amount in cents. 8 cents is subtle and musical. Range: 1-50.',
+      ),
+      delayMs: z.number().min(0).max(30).default(0).optional().describe(
+        'For stereo_detune mode: micro-delay in ms applied to right channel for extra width. 0 = no delay. 10-15ms is typical for Haas effect.',
+      ),
+      outputFilename: z.string().optional().describe('Custom output filename. Omit for auto-generated name.'),
+    },
+    async ({ inputs, mode, detuneCents, delayMs, outputFilename }) => {
+      try {
+        if (mode === 'mix') {
+          // ── Mix mode: layer multiple files ──────────────────────
+          const inputPaths = inputs.map(resolveInputFile);
+          if (inputPaths.length < 2) {
+            return {
+              content: [{ type: 'text' as const, text: 'sample_layer mix mode requires at least 2 input files.' }],
+              isError: true,
+            };
+          }
+
+          const outName = outputFilename ??
+            generateOutputFilename(basename(inputPaths[0]), 'layered', `${inputPaths.length}files`);
+          const outputPath = join(getDefaultSampleDir(), outName);
+          await mkdir(dirname(outputPath), { recursive: true });
+
+          // Auto-balance volumes at 1/N to prevent clipping
+          const volumes = inputPaths.map(() => 1 / inputPaths.length);
+          const tmpMixed = outputPath.replace('.wav', '_tmp_mix.wav');
+
+          try {
+            await soxRunner.mix(inputPaths, tmpMixed, volumes);
+            await soxRunner.normalize(tmpMixed, outputPath);
+          } finally {
+            await unlink(tmpMixed).catch(() => {});
+          }
+
+          return {
+            content: [{
+              type: 'text' as const,
+              text: [
+                `Layered ${inputPaths.length} files together with auto-balanced volumes (${(1 / inputPaths.length).toFixed(2)} each).`,
+                '',
+                'Inputs:',
+                ...inputPaths.map((p, i) => `  ${i + 1}. ${p}`),
+                '',
+                `Output: ${outputPath}`,
+                '',
+                'To use in FL Studio: drag this file into the Channel Rack or Sampler.',
+              ].join('\n'),
+            }],
+          };
+        }
+
+        // ── Stereo detune mode ─────────────────────────────────────
+        if (inputs.length !== 1) {
+          return {
+            content: [{ type: 'text' as const, text: 'sample_layer stereo_detune mode requires exactly 1 input file.' }],
+            isError: true,
+          };
+        }
+
+        const inputPath = resolveInputFile(inputs[0]);
+        const cents = detuneCents ?? 8;
+        const delay = delayMs ?? 0;
+
+        const detuneLabel = `${cents}c` + (delay > 0 ? `_${delay}ms` : '');
+        const outName = outputFilename ??
+          generateOutputFilename(basename(inputPath), 'stereo_detune', detuneLabel);
+        const outputPath = join(getDefaultSampleDir(), outName);
+        await mkdir(dirname(outputPath), { recursive: true });
+
+        const base = basename(outputPath, '.wav');
+        const dir = dirname(outputPath);
+        const leftTmp = join(dir, `${base}_L_tmp.wav`);
+        const rightTmp = join(dir, `${base}_R_tmp.wav`);
+        const rightDelayedTmp = join(dir, `${base}_R_delayed_tmp.wav`);
+        const mergedTmp = join(dir, `${base}_merged_tmp.wav`);
+
+        try {
+          // Step 1: Pitch-shift up for left channel
+          await soxRunner.pitch(inputPath, leftTmp, cents);
+
+          // Step 2: Pitch-shift down for right channel
+          await soxRunner.pitch(inputPath, rightTmp, -cents);
+
+          // Step 3: Optional micro-delay on right channel (Haas effect)
+          let rightSource = rightTmp;
+          if (delay > 0) {
+            const delaySec = (delay / 1000).toFixed(4);
+            await soxRunner.run([rightTmp, rightDelayedTmp, 'delay', delaySec]);
+            rightSource = rightDelayedTmp;
+          }
+
+          // Step 4: Merge left + right into stereo
+          await soxRunner.merge([leftTmp, rightSource], mergedTmp);
+
+          // Step 5: Normalize to prevent clipping
+          await soxRunner.normalize(mergedTmp, outputPath);
+        } finally {
+          // Clean up ALL temp files
+          const temps = [leftTmp, rightTmp, rightDelayedTmp, mergedTmp];
+          await Promise.all(temps.map(f => unlink(f).catch(() => {})));
+        }
+
+        return {
+          content: [{
+            type: 'text' as const,
+            text: [
+              `Created stereo-detuned version: +${cents}/-${cents} cents` +
+                (delay > 0 ? ` with ${delay}ms micro-delay (Haas effect)` : '') + '.',
+              '',
+              `Input:  ${inputPath}`,
+              `Output: ${outputPath}`,
+              '',
+              'The left channel is pitched slightly up and the right channel slightly down,',
+              'creating a rich, wide stereo texture from a mono/stereo source.',
+              '',
+              'To use in FL Studio: drag this file into the Channel Rack or Sampler.',
+            ].join('\n'),
+          }],
+        };
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{ type: 'text' as const, text: `sample_layer failed: ${msg}` }],
           isError: true,
         };
       }
