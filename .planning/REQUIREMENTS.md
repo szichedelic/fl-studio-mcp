@@ -49,11 +49,11 @@ Requirements for milestone v2.0 Production Pipeline. Each maps to roadmap phases
 
 ### Sample Manipulation
 
-- [ ] **SAM-01**: User can pitch-shift and detune audio samples
-- [ ] **SAM-02**: User can reverse audio samples
-- [ ] **SAM-03**: User can time-stretch audio samples
-- [ ] **SAM-04**: User can layer and mix multiple audio files with stereo detune effects
-- [ ] **SAM-05**: User can execute full resampling workflow (generate notes -> render -> manipulate -> reload)
+- [x] **SAM-01**: User can pitch-shift and detune audio samples
+- [x] **SAM-02**: User can reverse audio samples
+- [x] **SAM-03**: User can time-stretch audio samples
+- [x] **SAM-04**: User can layer and mix multiple audio files with stereo detune effects
+- [x] **SAM-05**: User can execute full resampling workflow (generate notes -> render -> manipulate -> reload)
 
 ## Future Requirements
 
@@ -113,11 +113,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SER-04 | Phase 5 | Complete |
 | REN-01 | Phase 6 | Complete |
 | REN-02 | Phase 6 | Complete |
-| SAM-01 | Phase 7 | Pending |
-| SAM-02 | Phase 7 | Pending |
-| SAM-03 | Phase 7 | Pending |
-| SAM-04 | Phase 7 | Pending |
-| SAM-05 | Phase 7 | Pending |
+| SAM-01 | Phase 7 | Complete |
+| SAM-02 | Phase 7 | Complete |
+| SAM-03 | Phase 7 | Complete |
+| SAM-04 | Phase 7 | Complete |
+| SAM-05 | Phase 7 | Complete |
 
 **Coverage:**
 - v2.0 requirements: 20 total

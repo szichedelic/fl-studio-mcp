@@ -41,8 +41,8 @@ Plans:
 - [x] **Phase 3: Humanization Engine** - Notes sound human with timing drift, velocity curves, swing, and articulation
 - [x] **Phase 4: Generic Plugin Control** - Discover and control any VST parameter by name
 - [x] **Phase 5: Serum 2 Sound Design** - Create and shape sounds in Serum 2 via natural language
-- [ ] **Phase 6: Audio Rendering Workflow** - Render patterns to WAV with guided workflow and automatic file detection
-- [ ] **Phase 7: Sample Manipulation** - Pitch-shift, reverse, stretch, layer, and resample audio
+- [x] **Phase 6: Audio Rendering Workflow** - Render patterns to WAV with guided workflow and automatic file detection
+- [x] **Phase 7: Sample Manipulation** - Pitch-shift, reverse, stretch, layer, and resample audio
 
 ## Phase Details
 
@@ -121,9 +121,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 07-01-PLAN.md -- SoxRunner class, audio types, and file resolution utilities
-- [ ] 07-02-PLAN.md -- Basic sample tools (pitch, reverse, timestretch, info) and tool registration
-- [ ] 07-03-PLAN.md -- Stereo detune/layer tool (sample_layer) and final build verification
+- [x] 07-01-PLAN.md -- SoxRunner class, audio types, and file resolution utilities
+- [x] 07-02-PLAN.md -- Basic sample tools (pitch, reverse, timestretch, info) and tool registration
+- [x] 07-03-PLAN.md -- Stereo detune/layer tool (sample_layer) and final build verification
 
 ## Progress
 
@@ -138,9 +138,9 @@ Phases execute in numeric order: 3 -> 4 -> 5 -> 6 -> 7
 | 4. Generic Plugin Control | v2.0 | 3/3 | Complete | 2026-02-25 |
 | 5. Serum 2 Sound Design | v2.0 | 3/3 | Complete | 2026-02-24 |
 | 6. Audio Rendering Workflow | v2.0 | 2/2 | Complete | 2026-02-25 |
-| 7. Sample Manipulation | v2.0 | 0/3 | Not started | - |
+| 7. Sample Manipulation | v2.0 | 3/3 | Complete | 2026-02-25 |
 
 ---
 *Created: 2026-02-23 (v1.0 phases)*
-*Updated: 2026-02-25 (Phase 7 planned)*
+*Updated: 2026-02-25 (Phase 7 complete — v2.0 milestone complete)*
 *v2.0 requirements: 20 | v2.0 phases: 5 | Depth: comprehensive*
