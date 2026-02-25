@@ -1,5 +1,32 @@
 # Project Milestones: FL Studio MCP Server
 
+## v2.1 Song Building & Mixing (Shipped: 2026-02-25)
+
+**Delivered:** Full song construction capabilities with mixer control, playlist track management, marker navigation, and project-level controls -- enabling mixing, arrangement organization, and tempo/position control through natural language.
+
+**Phases completed:** 8-11 (9 plans total)
+
+**Key accomplishments:**
+- Mixer core with volume, pan, mute, solo controls supporting dB levels, percentages, and normalized values
+- Mixer routing with send creation, route levels, and built-in parametric EQ control per track
+- Effect slot access via existing plugin system (discover/get/set params on mixer effects)
+- Playlist track management with mute/solo/rename/color (1-indexed validation throughout)
+- Time markers with add/list/navigate using bar-to-tick conversion and iteration-based enumeration
+- Live clip triggering in Performance Mode with triggerLiveClip/getLiveStatus APIs
+- Project controls: tempo get/set (bpm*1000 multiplier), position get/set in multiple formats, undo/redo using directional API
+
+**Stats:**
+- ~3,300 lines added (mixer.py, playlist.py, project.py, mixer.ts, playlist.ts, project.ts)
+- Total codebase: ~14,000 lines
+- 4 phases, 9 plans
+- 1 day (2026-02-25)
+
+**Git range:** `feat(08-01)` → `docs(11)`
+
+**What's next:** TBD -- automation clips, advanced arrangement, or mixing/mastering plugins are candidates
+
+---
+
 ## v2.0 Production Pipeline (Shipped: 2026-02-25)
 
 **Delivered:** Full creative production toolkit with humanization engine, Serum 2 sound design, audio rendering, and sample manipulation -- transforming note generation into an end-to-end music production workflow.

@@ -5,65 +5,72 @@
 See: .planning/PROJECT.md (updated 2026-02-25)
 
 **Core value:** Natural language to human-sounding music in FL Studio
-**Current focus:** Phase 11 - Project Controls (Phase 10 complete)
+**Current focus:** v2.1 SHIPPED - ready for next milestone
 
 ## Current Position
 
-Phase: 11 of 11 (Project Controls) - COMPLETE
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-02-25 - Completed 11-02-PLAN.md
+Phase: All phases complete through v2.1
+Plan: —
+Status: Milestone v2.1 shipped
+Last activity: 2026-02-25 - Completed v2.1 Song Building & Mixing
 
-Progress: [####################] 100% v2.0 | [██████████] 100% v2.1 (9/9 plans)
+Progress: [####################] v1.0 | [####################] v2.0 | [####################] v2.1
 
 ## Performance Metrics
 
-**Velocity (v2.0):**
-- Total plans completed: 14
-- Total execution time: ~3 days (2026-02-23 to 2026-02-25)
+**Milestones shipped:**
 
-**By Phase (v2.1):**
+| Milestone | Phases | Plans | Shipped |
+|-----------|--------|-------|---------|
+| v1.0 Foundation & Note Generation | 1-2 | 6 | 2026-02-23 |
+| v2.0 Production Pipeline | 3-7 | 14 | 2026-02-25 |
+| v2.1 Song Building & Mixing | 8-11 | 9 | 2026-02-25 |
 
-| Phase | Plans | Status |
-|-------|-------|--------|
-| 8. Mixer Core | 2/2 | Complete |
-| 9. Mixer Routing | 2/2 | Complete |
-| 10. Playlist & Markers | 3/3 | Complete |
-| 11. Project Controls | 2/2 | Complete |
+**Total:** 11 phases, 29 plans, ~14,000 lines of code
 
 ## Accumulated Context
 
-### Decisions
+### Key Decisions (Carry Forward)
 
-Recent decisions affecting v2.1 work:
-- Mixer is 0-indexed (0=Master, 1+=inserts), playlist is 1-indexed
-- Volume 0.8 = unity gain (0dB), not 1.0
-- Color format is BGR (0x--BBGGRR), not RGB
-- Tempo IS settable via `general.processRECEvent(midi.REC_Tempo, bpm*1000, flags)`
-- Must call `mixer.afterRoutingChanged()` after batch routing operations
-- NO API for playlist clip placement - track management only
-- Use explicit 1/0 for mute/solo, NOT -1 (toggle mode is stateless/unpredictable)
-- MCP tools accept RGB hex (#RRGGBB) for colors, convert to BGR internally
-- Validation helper `_validate_track_index()` shared across handlers
-- Track resolution supports both index (int) and name (str) via _resolve_track_ref
-- Routes must exist before setting level (use set_route first)
-- EQ values returned in both normalized (0-1) and real units (dB, Hz)
-- Level normalization: 0dB = 0.8, using 10^(dB/50) * 0.8 formula for dB conversion
-- MCP tools accept level in normalized (0-1), percentage (0-100), OR decibels
-- Effect slot tools: track param = channelIndex for paramCache integration
-- Live clip APIs: track 1-indexed, block 0-indexed, -1 to stop all clips
-- Performance Mode required for live clip functions to work
-- Tempo: bpm * 1000 for processRECEvent, REC_Control | REC_UpdateControl for UI update
-- Position setSongPos: only modes -1, 0, 1, 2 work for writing (3-5 are read-only)
-- Undo/Redo: use undoUp()/undoDown(), NOT undo() (undo toggles unpredictably)
+Technical decisions that inform future work:
 
-### From v2.0
-
+**Communication:**
+- SysEx-over-MIDI bridge via loopMIDI for FL Studio integration
 - FL Studio piano roll subinterpreter has no file I/O - must use embedded .pyscript approach
-- VST parameter indexing is positional - need name-based resolution
-- FL Studio has no programmatic render API - guided manual workflow required
-- `getParamValue` unreliable for VSTs - use shadow state
 - SysEx payload size limited - chunk large responses
+
+**Plugin Control:**
+- VST parameter indexing is positional - need name-based resolution
+- `getParamValue` unreliable for VSTs - use shadow state
+- 3-tier fuzzy name matching (exact, prefix, contains) for param names
+
+**Mixer:**
+- Mixer is 0-indexed (0=Master, 1+=inserts)
+- Volume 0.8 = unity gain (0dB), not 1.0
+- Color format is BGR (0x--BBGGRR) internally, RGB hex in MCP tools
+- Must call `mixer.afterRoutingChanged()` after batch routing operations
+
+**Playlist:**
+- Playlist tracks are 1-indexed (different from mixer!)
+- NO API for playlist clip placement - track management only
+- Use explicit 1/0 for mute/solo, NOT -1 (toggle mode is stateless)
+
+**Project:**
+- Tempo: `bpm * 1000` for processRECEvent, `REC_Control | REC_UpdateControl` for UI update
+- Position setSongPos: only modes -1, 0, 1, 2 work for writing (3-5 are read-only)
+- Undo/Redo: use `undoUp()`/`undoDown()`, NOT `undo()` (undo toggles unpredictably)
+
+**Rendering:**
+- FL Studio has no programmatic render API - guided manual workflow required
+- SoX CLI for audio processing (pitch, reverse, timestretch, layer)
+
+### Out of Scope (Future Candidates)
+
+- Automation clips (AUTO-01, AUTO-02)
+- Guided pattern placement workflow (ARR-01, ARR-02)
+- Addictive Drums 2 integration
+- Mixing/mastering plugins (Neutron, Ozone)
+- Drum pattern generation
 
 ### Blockers/Concerns
 
@@ -72,5 +79,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Completed 11-02-PLAN.md (Undo/redo controls) - v2.1 COMPLETE
+Stopped at: v2.1 milestone shipped
 Resume file: None
