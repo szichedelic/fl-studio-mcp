@@ -407,14 +407,10 @@ export function registerMixerTools(
     createSendSchema,
     async ({ source, destination, level, levelPercent, levelDb }) => {
       try {
-        // Build source/destination params
-        const sourceParam = typeof source === 'number' ? { sourceIndex: source } : { sourceName: source };
-        const destParam = typeof destination === 'number' ? { destIndex: destination } : { destName: destination };
-
-        // Enable the route
+        // Enable the route - handler's _resolve_track_ref handles both int and str
         const routeResult = await connection.executeCommand('mixer.set_route', {
-          ...sourceParam,
-          ...destParam,
+          source,
+          destination,
           enabled: true,
         });
 
@@ -429,8 +425,8 @@ export function registerMixerTools(
         const normalizedLevel = normalizeSendLevel(level, levelPercent, levelDb);
         if (normalizedLevel !== 0.8) {
           const levelResult = await connection.executeCommand('mixer.set_route_level', {
-            ...sourceParam,
-            ...destParam,
+            source,
+            destination,
             level: normalizedLevel,
           });
 
@@ -467,12 +463,10 @@ export function registerMixerTools(
     removeSendSchema,
     async ({ source, destination }) => {
       try {
-        const sourceParam = typeof source === 'number' ? { sourceIndex: source } : { sourceName: source };
-        const destParam = typeof destination === 'number' ? { destIndex: destination } : { destName: destination };
-
+        // Handler's _resolve_track_ref handles both int and str
         const result = await connection.executeCommand('mixer.set_route', {
-          ...sourceParam,
-          ...destParam,
+          source,
+          destination,
           enabled: false,
         });
 
@@ -525,13 +519,12 @@ export function registerMixerTools(
           };
         }
 
-        const sourceParam = typeof source === 'number' ? { sourceIndex: source } : { sourceName: source };
-        const destParam = typeof destination === 'number' ? { destIndex: destination } : { destName: destination };
+        // Handler's _resolve_track_ref handles both int and str
         const normalizedLevel = normalizeSendLevel(level, levelPercent, levelDb);
 
         const result = await connection.executeCommand('mixer.set_route_level', {
-          ...sourceParam,
-          ...destParam,
+          source,
+          destination,
           level: normalizedLevel,
         });
 
