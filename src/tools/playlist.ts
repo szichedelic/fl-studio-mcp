@@ -8,6 +8,11 @@
  * - set_playlist_track_name: Rename track
  * - set_playlist_track_color: Set track color (RGB hex input, converted to BGR)
  *
+ * Marker tools (Phase 10 Plan 02):
+ * - list_markers: List all time markers in the project
+ * - add_marker: Add a marker at a specific bar or current position
+ * - jump_to_marker: Navigate to a marker by name or index
+ *
  * IMPORTANT: Playlist tracks are 1-indexed (first track = 1, not 0).
  * This differs from mixer tracks which are 0-indexed (0=Master).
  */
@@ -228,6 +233,137 @@ export function registerPlaylistTools(
         const message = error instanceof Error ? error.message : String(error);
         return {
           content: [{ type: 'text', text: `Error setting playlist track color: ${message}` }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MARKER TOOLS (Phase 10 Plan 02)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ── list_markers ──────────────────────────────────────────────────────────
+
+  server.tool(
+    'list_markers',
+    'List all time markers in the project. Returns marker names and indices.',
+    {},
+    async () => {
+      try {
+        const result = await connection.executeCommand('playlist.list_markers', {});
+
+        if (!result.success) {
+          return {
+            content: [{ type: 'text', text: `Failed to list markers: ${JSON.stringify(result)}` }],
+            isError: true,
+          };
+        }
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{ type: 'text', text: `Error listing markers: ${message}` }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // ── add_marker ────────────────────────────────────────────────────────────
+
+  const addMarkerSchema = {
+    name: z.string()
+      .describe('Name for the marker'),
+    bar: z.number().int().min(1).optional()
+      .describe('Bar number (1-indexed) to place marker. If not provided, places at current playhead position.'),
+  };
+
+  server.tool(
+    'add_marker',
+    'Add a time marker at a specific bar or the current playhead position. Bar numbers are 1-indexed.',
+    addMarkerSchema,
+    async ({ name, bar }) => {
+      try {
+        // Only include bar if defined
+        const params: { name: string; bar?: number } = { name };
+        if (bar !== undefined) {
+          params.bar = bar;
+        }
+
+        const result = await connection.executeCommand('playlist.add_marker', params);
+
+        if (!result.success) {
+          return {
+            content: [{ type: 'text', text: `Failed to add marker: ${JSON.stringify(result)}` }],
+            isError: true,
+          };
+        }
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{ type: 'text', text: `Error adding marker: ${message}` }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // ── jump_to_marker ────────────────────────────────────────────────────────
+
+  const jumpToMarkerSchema = {
+    name: z.string().optional()
+      .describe('Marker name to jump to (case-insensitive partial match)'),
+    index: z.number().int().min(0).optional()
+      .describe('Marker index (0-indexed) to jump to'),
+  };
+
+  server.tool(
+    'jump_to_marker',
+    "Jump to a marker by name or index. Provide either name (partial match supported) or index. Note: Navigation uses FL Studio's relative marker jump API.",
+    jumpToMarkerSchema,
+    async ({ name, index }) => {
+      try {
+        // Validate that at least one is provided
+        if (name === undefined && index === undefined) {
+          return {
+            content: [{ type: 'text', text: 'Must provide either name or index' }],
+            isError: true,
+          };
+        }
+
+        // Only include defined values
+        const params: { name?: string; index?: number } = {};
+        if (name !== undefined) {
+          params.name = name;
+        }
+        if (index !== undefined) {
+          params.index = index;
+        }
+
+        const result = await connection.executeCommand('playlist.jump_to_marker', params);
+
+        if (!result.success) {
+          return {
+            content: [{ type: 'text', text: `Failed to jump to marker: ${JSON.stringify(result)}` }],
+            isError: true,
+          };
+        }
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{ type: 'text', text: `Error jumping to marker: ${message}` }],
           isError: true,
         };
       }
