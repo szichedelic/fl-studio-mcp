@@ -59,8 +59,8 @@ See: .planning/milestones/v2.0-ROADMAP.md
 **Plans**: 2 plans
 
 Plans:
-- [ ] 08-01: Mixer state reading (get volume, pan, mute, solo for any track)
-- [ ] 08-02: Mixer mutations (set volume, pan, mute, solo, name, color)
+- [ ] 08-01-PLAN.md - Python handlers: extend state.mixer with color, create mixer.py mutations
+- [ ] 08-02-PLAN.md - TypeScript tools: MCP tools for volume, pan, mute, solo, name, color
 
 ### Phase 9: Mixer Routing & Advanced
 **Goal**: Users can create send busses, parallel processing, and control per-track EQ
@@ -127,7 +127,7 @@ Phases execute in numeric order: 8 -> 9 -> 10 -> 11
 | 5. Serum 2 Sound Design | v2.0 | 3/3 | Complete | 2026-02-24 |
 | 6. Audio Rendering Workflow | v2.0 | 2/2 | Complete | 2026-02-25 |
 | 7. Sample Manipulation | v2.0 | 3/3 | Complete | 2026-02-25 |
-| 8. Mixer Core | v2.1 | 0/2 | Not started | - |
+| 8. Mixer Core | v2.1 | 0/2 | Planned | - |
 | 9. Mixer Routing & Advanced | v2.1 | 0/2 | Not started | - |
 | 10. Playlist & Markers | v2.1 | 0/3 | Not started | - |
 | 11. Project Controls | v2.1 | 0/2 | Not started | - |
