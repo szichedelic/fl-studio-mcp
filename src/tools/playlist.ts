@@ -13,8 +13,15 @@
  * - add_marker: Add a marker at a specific bar or current position
  * - jump_to_marker: Navigate to a marker by name or index
  *
+ * Live Clip tools (Phase 10 Plan 03):
+ * - trigger_live_clip: Trigger a live clip in Performance Mode
+ * - stop_live_clips: Stop all live clips on a track
+ * - get_live_status: Get live clip playback status
+ *
  * IMPORTANT: Playlist tracks are 1-indexed (first track = 1, not 0).
  * This differs from mixer tracks which are 0-indexed (0=Master).
+ *
+ * NOTE: Live clip functions require Performance Mode to be enabled in FL Studio.
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -364,6 +371,124 @@ export function registerPlaylistTools(
         const message = error instanceof Error ? error.message : String(error);
         return {
           content: [{ type: 'text', text: `Error jumping to marker: ${message}` }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LIVE CLIP TOOLS (Phase 10 Plan 03)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ── trigger_live_clip ────────────────────────────────────────────────────
+
+  const triggerLiveClipSchema = {
+    track: z.number().int().min(1)
+      .describe('Playlist track (1-indexed)'),
+    block: z.number().int().min(0)
+      .describe('Block number (0-indexed) to trigger'),
+  };
+
+  server.tool(
+    'trigger_live_clip',
+    'Trigger a live clip in Performance Mode. Track is 1-indexed, block is 0-indexed. Note: Performance Mode must be enabled in FL Studio for clips to play.',
+    triggerLiveClipSchema,
+    async ({ track, block }) => {
+      try {
+        const result = await connection.executeCommand('playlist.trigger_clip', {
+          track,
+          block,
+        });
+
+        if (!result.success) {
+          return {
+            content: [{ type: 'text', text: `Failed to trigger live clip: ${JSON.stringify(result)}` }],
+            isError: true,
+          };
+        }
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{ type: 'text', text: `Error triggering live clip: ${message}` }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // ── stop_live_clips ──────────────────────────────────────────────────────
+
+  const stopLiveClipsSchema = {
+    track: z.number().int().min(1)
+      .describe('Playlist track (1-indexed) to stop clips on'),
+  };
+
+  server.tool(
+    'stop_live_clips',
+    'Stop all live clips on a playlist track. Track is 1-indexed. Requires Performance Mode.',
+    stopLiveClipsSchema,
+    async ({ track }) => {
+      try {
+        const result = await connection.executeCommand('playlist.stop_clips', {
+          track,
+        });
+
+        if (!result.success) {
+          return {
+            content: [{ type: 'text', text: `Failed to stop live clips: ${JSON.stringify(result)}` }],
+            isError: true,
+          };
+        }
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{ type: 'text', text: `Error stopping live clips: ${message}` }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // ── get_live_status ──────────────────────────────────────────────────────
+
+  const getLiveStatusSchema = {
+    track: z.number().int().min(1)
+      .describe('Playlist track (1-indexed) to check status'),
+  };
+
+  server.tool(
+    'get_live_status',
+    'Get live clip status for a playlist track. Track is 1-indexed. Returns status indicating if clips are playing/scheduled. Requires Performance Mode.',
+    getLiveStatusSchema,
+    async ({ track }) => {
+      try {
+        const result = await connection.executeCommand('playlist.get_live_status', {
+          track,
+        });
+
+        if (!result.success) {
+          return {
+            content: [{ type: 'text', text: `Failed to get live status: ${JSON.stringify(result)}` }],
+            isError: true,
+          };
+        }
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{ type: 'text', text: `Error getting live status: ${message}` }],
           isError: true,
         };
       }
