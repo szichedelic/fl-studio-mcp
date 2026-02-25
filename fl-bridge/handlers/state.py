@@ -118,7 +118,8 @@ def handle_get_mixer(params: Dict[str, Any]) -> Dict[str, Any]:
                 'volume': mixer.getTrackVolume(i),
                 'pan': mixer.getTrackPan(i),
                 'muted': mixer.isTrackMuted(i),
-                'solo': mixer.isTrackSolo(i)
+                'solo': mixer.isTrackSolo(i),
+                'color': mixer.getTrackColor(i)
             }
             track_list.append(track_info)
 
