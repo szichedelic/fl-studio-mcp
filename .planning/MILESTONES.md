@@ -1,37 +1,51 @@
-# Milestones: FL Studio MCP Server
+# Project Milestones: FL Studio MCP Server
 
-## Completed Milestones
+## v2.0 Production Pipeline (Shipped: 2026-02-25)
 
-### v1.0: Foundation & Note Generation
-**Completed:** 2026-02-23
-**Phases:** 1-2 (of original 10-phase roadmap)
+**Delivered:** Full creative production toolkit with humanization engine, Serum 2 sound design, audio rendering, and sample manipulation -- transforming note generation into an end-to-end music production workflow.
 
-**What shipped:**
-- MCP server (TypeScript/Node.js) with stdio transport
-- SysEx-over-MIDI bridge to FL Studio via loopMIDI
-- FL Bridge Python MIDI controller script
-- Transport control (play, stop, record)
-- Project state reading (channels, patterns, mixer)
-- Pattern selection and creation
-- Music theory engine (scales, chords, melody/bass generation using tonal library)
-- Piano roll note creation via embedded .pyscript (ComposeWithBridge)
-- 6 MCP tools: add_notes, create_chord_progression, create_melody, create_bass_line, get_scale_info, clear_notes
+**Phases completed:** 3-7 (14 plans total)
 
-**Key decisions:**
-- Single loopMIDI port for bidirectional communication
-- SysEx JSON protocol for command/response
-- Embedded .pyscript approach (Node.js writes note data as Python literals into .pyscript file) — FL Studio's piano roll subinterpreter has no file I/O
-- Velocity as 0.0-1.0 float (FL Studio native), timing in beats (quarter notes)
-- tonal library for music theory (chroma is root-relative, not C-relative)
+**Key accomplishments:**
+- Humanization engine with Ornstein-Uhlenbeck timing drift, MPC swing, 5 instrument velocity profiles, and 4 named presets (tight, loose, jazz, lo-fi)
+- Generic plugin parameter discovery and control with 3-tier fuzzy name matching and shadow state for reliable value tracking
+- Serum 2 sound design with 144 semantic aliases, 6 recipes (pad, lead, bass, pluck, keys, fx), preset browsing, and 6 MCP tools
+- Guided audio rendering workflow with chokidar-based WAV file detection and session-scoped tracking
+- SoX-based sample manipulation: pitch-shift, reverse, time-stretch, multi-file layering, and stereo detune with Haas effect
 
-**Validated requirements:**
-- FOUND-01: Transport control
-- FOUND-02: Project state reading
-- FOUND-03: Pattern selection/creation
-- COMP-01: Note/MIDI generation
-- COMP-02: Chord progression generation
-- COMP-03: Melody generation
-- COMP-04: Bass line generation
-- COMP-06: Scale/key locking
+**Stats:**
+- 85 files created/modified
+- ~7,200 lines TypeScript + ~2,000 lines Python
+- 5 phases, 14 plans, ~30 tasks
+- 3 days from v1.0 to ship (2026-02-23 → 2026-02-25)
 
-**Last phase number:** 2 (10 were planned, but pivoting to new milestone)
+**Git range:** `docs(03)` → `docs(07)`
+
+**What's next:** TBD -- mixing/mastering plugins, drum patterns, arrangement/playlist control are candidates
+
+---
+
+## v1.0 Foundation & Note Generation (Shipped: 2026-02-23)
+
+**Delivered:** Bidirectional communication bridge between Claude and FL Studio with natural language note generation -- chords, melodies, bass lines, and scale-locked composition.
+
+**Phases completed:** 1-2 (6 plans total)
+
+**Key accomplishments:**
+- SysEx-over-MIDI bridge for reliable bidirectional communication via loopMIDI
+- FL Bridge Python script with safe initialization and command routing
+- Music theory engine using tonal library for scales, chords, intervals
+- Chord progression, melody, and bass line generators from roman numerals and natural language
+- Embedded .pyscript approach for FL Studio piano roll (bypassing subinterpreter I/O restrictions)
+
+**Stats:**
+- ~40 files created
+- ~3,000 lines TypeScript + ~800 lines Python
+- 2 phases, 6 plans, ~20 tasks
+- 1 day from start to ship
+
+**Git range:** `feat(01-01)` → `feat(02-03)`
+
+**What's next:** v2.0 Production Pipeline
+
+---

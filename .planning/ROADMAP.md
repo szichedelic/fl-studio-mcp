@@ -2,136 +2,38 @@
 
 ## Milestones
 
-- Completed: **v1.0 Foundation & Note Generation** - Phases 1-2 (shipped 2026-02-23)
-- In progress: **v2.0 Production Pipeline** - Phases 3-7
+- Shipped: **v1.0 Foundation & Note Generation** - Phases 1-2 (shipped 2026-02-23)
+- Shipped: **v2.0 Production Pipeline** - Phases 3-7 (shipped 2026-02-25)
 
 ## Phases
 
 <details>
 <summary>v1.0 Foundation & Note Generation (Phases 1-2) - SHIPPED 2026-02-23</summary>
 
-### Phase 1: Foundation & Communication
-**Goal**: Establish reliable bidirectional communication between MCP client and FL Studio
-**Depends on**: Nothing (first phase)
-**Requirements**: FOUND-01, FOUND-02, FOUND-03
-**Plans**: 3 plans
+- [x] Phase 1: Foundation & Communication (3/3 plans) — 2026-02-23
+- [x] Phase 2: Note Generation Core (3/3 plans) — 2026-02-23
 
-Plans:
-- [x] 01-01: MCP server scaffolding + SysEx codec + MIDI client
-- [x] 01-02: FL Bridge Python script with safe initialization
-- [x] 01-03: Transport control + state reading + pattern operations
-
-### Phase 2: Note Generation Core
-**Goal**: Users can create musical content from natural language descriptions
-**Depends on**: Phase 1
-**Requirements**: COMP-01, COMP-02, COMP-03, COMP-04, COMP-06
-**Plans**: 3 plans
-
-Plans:
-- [x] 02-01: Music theory engine (tonal library, scales, chords, melody/bass generators)
-- [x] 02-02: FL Bridge pianoroll handler + ComposeWithBridge.pyscript
-- [x] 02-03: MCP note tools wiring theory engine to FL Bridge
+See: .planning/milestones/v1.0-ROADMAP.md (if archived)
 
 </details>
 
-### v2.0 Production Pipeline (In Progress)
+<details>
+<summary>v2.0 Production Pipeline (Phases 3-7) - SHIPPED 2026-02-25</summary>
 
-**Milestone Goal:** Transform note generation into a full creative production toolkit -- humanize MIDI, design sounds in Serum 2, render to audio, and manipulate samples.
+- [x] Phase 3: Humanization Engine (3/3 plans) — 2026-02-24
+- [x] Phase 4: Generic Plugin Control (3/3 plans) — 2026-02-25
+- [x] Phase 5: Serum 2 Sound Design (3/3 plans) — 2026-02-24
+- [x] Phase 6: Audio Rendering Workflow (2/2 plans) — 2026-02-25
+- [x] Phase 7: Sample Manipulation (3/3 plans) — 2026-02-25
 
-- [x] **Phase 3: Humanization Engine** - Notes sound human with timing drift, velocity curves, swing, and articulation
-- [x] **Phase 4: Generic Plugin Control** - Discover and control any VST parameter by name
-- [x] **Phase 5: Serum 2 Sound Design** - Create and shape sounds in Serum 2 via natural language
-- [x] **Phase 6: Audio Rendering Workflow** - Render patterns to WAV with guided workflow and automatic file detection
-- [x] **Phase 7: Sample Manipulation** - Pitch-shift, reverse, stretch, layer, and resample audio
+See: .planning/milestones/v2.0-ROADMAP.md
 
-## Phase Details
-
-### Phase 3: Humanization Engine
-**Goal**: Generated music sounds human -- timing breathes, dynamics vary, groove feels alive
-**Depends on**: Phase 2 (requires NoteData[] to transform)
-**Requirements**: HUM-01, HUM-02, HUM-03, HUM-04, HUM-05, HUM-06
-**Success Criteria** (what must be TRUE):
-  1. User can humanize a pattern and hear Brownian-walk timing drift that sounds organic, not random noise
-  2. User can apply velocity variation with instrument-appropriate profiles (e.g., drums emphasize ghost notes, piano breathes dynamically)
-  3. User can apply swing (50-75%) and hear groove shift on off-beat notes
-  4. User can get context-aware humanization where fast passages stay tight and slow passages breathe more
-  5. User can select named presets ("tight", "loose", "jazz", "lo-fi") and hear distinctly different humanization character
-**Plans**: 3 plans
-
-Plans:
-- [x] 03-01-PLAN.md -- Types, utilities, swing engine, and O-U timing drift
-- [x] 03-02-PLAN.md -- Velocity profiles, note-length variation, and named presets
-- [x] 03-03-PLAN.md -- Pipeline orchestrator and MCP tool wiring
-
-### Phase 4: Generic Plugin Control
-**Goal**: Users can discover and manipulate any loaded VST plugin's parameters by name
-**Depends on**: Phase 1 (FL Bridge for SysEx commands)
-**Requirements**: PLUG-01, PLUG-02, PLUG-03
-**Success Criteria** (what must be TRUE):
-  1. User can ask "what parameters does this plugin have?" and get a filtered list of real parameter names (not 4240 blank slots)
-  2. User can set any VST parameter by its name (e.g., "set Filter Cutoff to 75%") and the plugin responds
-  3. User can read parameter values reliably even when FL Studio's getParamValue is buggy (shadow state fills the gap)
-  4. Parameter name resolution survives plugin version updates (name-based, not index-based)
-**Plans**: 3 plans
-
-Plans:
-- [x] 04-01-PLAN.md -- SysEx response chunking (Python send-side + TypeScript receive-side)
-- [x] 04-02-PLAN.md -- Python plugin handlers + TypeScript param cache and shadow state
-- [x] 04-03-PLAN.md -- MCP plugin tools wiring (discover, get, set by name)
-
-### Phase 5: Serum 2 Sound Design
-**Goal**: Users can create and shape sounds in Serum 2 using musical language, not parameter indices
-**Depends on**: Phase 4 (generic plugin control and parameter cache must exist)
-**Requirements**: SER-01, SER-02, SER-03, SER-04
-**Success Criteria** (what must be TRUE):
-  1. User can control Serum 2 oscillators, filters, macros, and FX using semantic names (e.g., "set oscillator 1 to saw, filter cutoff to 40%")
-  2. User can say "create a warm pad" and get a multi-parameter recipe applied that produces an appropriate sound
-  3. User can request parameter changes using approximate names and fuzzy matching finds the right parameter
-  4. User can browse and load Serum 2 presets via natural language
-**Plans**: 3 plans
-
-Plans:
-- [x] 05-01-PLAN.md -- Runtime discovery spike + Serum types and semantic alias map
-- [x] 05-02-PLAN.md -- Sound design recipes and preset browsing (filesystem + FL Bridge)
-- [x] 05-03-PLAN.md -- MCP Serum tools wiring (set_param, apply_recipe, browse_presets, next/prev_preset, list_recipes)
-
-### Phase 6: Audio Rendering Workflow
-**Goal**: Users can render MIDI patterns to WAV files with a seamless guided workflow
-**Depends on**: Phase 1 (FL Bridge for state reading)
-**Requirements**: REN-01, REN-02
-**Success Criteria** (what must be TRUE):
-  1. User can say "render this pattern" and receive clear step-by-step instructions (suggested filename, output path, exact FL Studio steps)
-  2. System automatically detects when a rendered WAV file appears and confirms it is ready for downstream processing
-  3. Rendered files are tracked and available for sample manipulation in Phase 7
-**Plans**: 2 plans
-
-Plans:
-- [x] 06-01-PLAN.md -- Install chokidar, audio types, render registry, and WAV file watcher
-- [x] 06-02-PLAN.md -- MCP render tools (render_pattern, list_renders, check_render) and tool registration
-
-### Phase 7: Sample Manipulation
-**Goal**: Users can transform audio samples and execute full resampling workflows
-**Depends on**: Phase 6 (needs rendered WAV files as source material)
-**Requirements**: SAM-01, SAM-02, SAM-03, SAM-04, SAM-05
-**Success Criteria** (what must be TRUE):
-  1. User can pitch-shift or detune a sample and hear the result (e.g., "pitch this down an octave")
-  2. User can reverse or time-stretch a sample via natural language
-  3. User can layer multiple audio files with stereo detune effects to create rich textures
-  4. User can execute a full resampling workflow: generate notes, render to audio, manipulate the audio, and get instructions to reload into FL Studio
-**Plans**: 3 plans
-
-Plans:
-- [x] 07-01-PLAN.md -- SoxRunner class, audio types, and file resolution utilities
-- [x] 07-02-PLAN.md -- Basic sample tools (pitch, reverse, timestretch, info) and tool registration
-- [x] 07-03-PLAN.md -- Stereo detune/layer tool (sample_layer) and final build verification
+</details>
 
 ## Progress
 
-**Execution Order:**
-Phases execute in numeric order: 3 -> 4 -> 5 -> 6 -> 7
-
-| Phase | Milestone | Plans Complete | Status | Completed |
-|-------|-----------|----------------|--------|-----------|
+| Phase | Milestone | Plans | Status | Completed |
+|-------|-----------|-------|--------|-----------|
 | 1. Foundation & Communication | v1.0 | 3/3 | Complete | 2026-02-23 |
 | 2. Note Generation Core | v1.0 | 3/3 | Complete | 2026-02-23 |
 | 3. Humanization Engine | v2.0 | 3/3 | Complete | 2026-02-24 |
@@ -141,6 +43,4 @@ Phases execute in numeric order: 3 -> 4 -> 5 -> 6 -> 7
 | 7. Sample Manipulation | v2.0 | 3/3 | Complete | 2026-02-25 |
 
 ---
-*Created: 2026-02-23 (v1.0 phases)*
-*Updated: 2026-02-25 (Phase 7 complete — v2.0 milestone complete)*
-*v2.0 requirements: 20 | v2.0 phases: 5 | Depth: comprehensive*
+*Updated: 2026-02-25 (v2.0 milestone archived)*
