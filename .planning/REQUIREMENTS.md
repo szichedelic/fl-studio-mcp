@@ -15,11 +15,11 @@ Requirements for Song Building & Mixing milestone. Each maps to roadmap phases.
 - [x] **MIX-04**: Mute/unmute mixer tracks
 - [x] **MIX-05**: Solo/unsolo mixer tracks
 - [x] **MIX-06**: Get/set mixer track name and color
-- [ ] **MIX-07**: Get mixer routing state (which tracks send to which)
-- [ ] **MIX-08**: Set mixer routing (send track A to track B)
-- [ ] **MIX-09**: Set send levels per route
-- [ ] **MIX-10**: Control mixer track EQ (built-in parametric EQ per track)
-- [ ] **MIX-11**: Access mixer effect slot plugins (discover/get/set params via existing plugin system)
+- [x] **MIX-07**: Get mixer routing state (which tracks send to which)
+- [x] **MIX-08**: Set mixer routing (send track A to track B)
+- [x] **MIX-09**: Set send levels per route
+- [x] **MIX-10**: Control mixer track EQ (built-in parametric EQ per track)
+- [x] **MIX-11**: Access mixer effect slot plugins (discover/get/set params via existing plugin system)
 
 ### Playlist Control
 
@@ -77,11 +77,11 @@ Which phases cover which requirements.
 | MIX-04 | Phase 8 | Complete |
 | MIX-05 | Phase 8 | Complete |
 | MIX-06 | Phase 8 | Complete |
-| MIX-07 | Phase 9 | Pending |
-| MIX-08 | Phase 9 | Pending |
-| MIX-09 | Phase 9 | Pending |
-| MIX-10 | Phase 9 | Pending |
-| MIX-11 | Phase 9 | Pending |
+| MIX-07 | Phase 9 | Complete |
+| MIX-08 | Phase 9 | Complete |
+| MIX-09 | Phase 9 | Complete |
+| MIX-10 | Phase 9 | Complete |
+| MIX-11 | Phase 9 | Complete |
 | PLAY-01 | Phase 10 | Pending |
 | PLAY-02 | Phase 10 | Pending |
 | PLAY-03 | Phase 10 | Pending |
@@ -104,4 +104,4 @@ Which phases cover which requirements.
 
 ---
 *Requirements defined: 2026-02-25*
-*Last updated: 2026-02-25 after Phase 8 completion*
+*Last updated: 2026-02-25 after Phase 9 completion*

@@ -40,7 +40,7 @@ See: .planning/milestones/v2.0-ROADMAP.md
 **Milestone Goal:** Enable full song creation from arranging patterns through mixing and balancing, with abstract primitives that support natural conversation.
 
 - [x] **Phase 8: Mixer Core** - Volume, pan, mute, solo, and track organization (2026-02-25)
-- [ ] **Phase 9: Mixer Routing & Advanced** - Send routing, EQ, and effect slot access
+- [x] **Phase 9: Mixer Routing & Advanced** - Send routing, EQ, and effect slot access (2026-02-25)
 - [ ] **Phase 10: Playlist & Markers** - Track management and marker navigation
 - [ ] **Phase 11: Project Controls** - Tempo, playback position, and undo/redo
 
@@ -75,8 +75,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 09-01-PLAN.md - Python handlers: routing (get/set routes, send levels) and EQ (get/set bands)
-- [ ] 09-02-PLAN.md - TypeScript tools: routing, EQ, and effect slot convenience wrappers
+- [x] 09-01-PLAN.md - Python handlers: routing (get/set routes, send levels) and EQ (get/set bands)
+- [x] 09-02-PLAN.md - TypeScript tools: routing, EQ, and effect slot convenience wrappers
 
 ### Phase 10: Playlist & Markers
 **Goal**: Users can organize playlist tracks and navigate via markers
@@ -128,10 +128,10 @@ Phases execute in numeric order: 8 -> 9 -> 10 -> 11
 | 6. Audio Rendering Workflow | v2.0 | 2/2 | Complete | 2026-02-25 |
 | 7. Sample Manipulation | v2.0 | 3/3 | Complete | 2026-02-25 |
 | 8. Mixer Core | v2.1 | 2/2 | Complete | 2026-02-25 |
-| 9. Mixer Routing & Advanced | v2.1 | 0/2 | Not started | - |
+| 9. Mixer Routing & Advanced | v2.1 | 2/2 | Complete | 2026-02-25 |
 | 10. Playlist & Markers | v2.1 | 0/3 | Not started | - |
 | 11. Project Controls | v2.1 | 0/2 | Not started | - |
 
 ---
 *Roadmap updated: 2026-02-25*
-*Milestone: v2.1 Song Building & Mixing*
+*Milestone: v2.1 Song Building & Mixing (Phase 9 complete)*
