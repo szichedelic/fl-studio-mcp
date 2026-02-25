@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 
 ## Current Position
 
-Phase: 8 of 11 (Mixer Core)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-25 - Completed 08-01-PLAN.md (Mixer Mutation Handlers)
+Phase: 8 of 11 (Mixer Core) - COMPLETE
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-02-25 - Completed 08-02-PLAN.md (MCP Mixer Tools)
 
-Progress: [####################] 100% v2.0 | [█░░░░░░░░░] 12.5% v2.1 (1/8 plans)
+Progress: [####################] 100% v2.0 | [██░░░░░░░░] 25% v2.1 (2/8 plans)
 
 ## Performance Metrics
 
@@ -44,6 +44,7 @@ Recent decisions affecting v2.1 work:
 - Must call `mixer.afterRoutingChanged()` after batch routing operations
 - NO API for playlist clip placement - track management only
 - Use explicit 1/0 for mute/solo, NOT -1 (toggle mode is stateless/unpredictable)
+- MCP tools accept RGB hex (#RRGGBB) for colors, convert to BGR internally
 
 ### From v2.0
 
@@ -60,5 +61,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Completed 08-01-PLAN.md (Mixer Mutation Handlers)
+Stopped at: Completed 08-02-PLAN.md (MCP Mixer Tools) - Phase 8 complete
 Resume file: None
