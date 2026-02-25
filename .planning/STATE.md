@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 ## Current Position
 
 Phase: 9 of 11 (Mixer Routing & Advanced)
-Plan: 0 of 2 in current phase
-Status: Ready to plan
-Last activity: 2026-02-25 - Phase 8 complete
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-25 - Completed 09-01-PLAN.md
 
-Progress: [####################] 100% v2.0 | [███░░░░░░░] 25% v2.1 (2/9 plans)
+Progress: [####################] 100% v2.0 | [████░░░░░░] 33% v2.1 (3/9 plans)
 
 ## Performance Metrics
 
@@ -27,7 +27,7 @@ Progress: [####################] 100% v2.0 | [███░░░░░░░] 25
 | Phase | Plans | Status |
 |-------|-------|--------|
 | 8. Mixer Core | 2/2 | Complete |
-| 9. Mixer Routing | 0/2 | Not started |
+| 9. Mixer Routing | 1/2 | In progress |
 | 10. Playlist & Markers | 0/3 | Not started |
 | 11. Project Controls | 0/2 | Not started |
 
@@ -45,6 +45,9 @@ Recent decisions affecting v2.1 work:
 - Use explicit 1/0 for mute/solo, NOT -1 (toggle mode is stateless/unpredictable)
 - MCP tools accept RGB hex (#RRGGBB) for colors, convert to BGR internally
 - Validation helper `_validate_track_index()` shared across handlers
+- Track resolution supports both index (int) and name (str) via _resolve_track_ref
+- Routes must exist before setting level (use set_route first)
+- EQ values returned in both normalized (0-1) and real units (dB, Hz)
 
 ### From v2.0
 
@@ -61,5 +64,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Phase 8 complete, ready to plan Phase 9
+Stopped at: Completed 09-01-PLAN.md
 Resume file: None
