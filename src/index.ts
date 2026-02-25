@@ -75,6 +75,19 @@ async function main() {
   // Attempt MIDI connection (non-fatal if it fails)
   await connectToFLStudio();
 
+  // Check SoX availability for sample manipulation tools
+  try {
+    const { soxRunner } = await import('./audio/sox-runner.js');
+    const version = await soxRunner.verify();
+    console.error(`[fl-studio-mcp] SoX available: ${version}`);
+  } catch {
+    console.error(
+      '[fl-studio-mcp] WARNING: SoX is not installed. ' +
+      'Sample manipulation tools will not work. ' +
+      'Install via: winget install --id ChrisBagwell.SoX -s winget'
+    );
+  }
+
   // Start the MCP server
   const transport = new StdioServerTransport();
   await server.connect(transport);
