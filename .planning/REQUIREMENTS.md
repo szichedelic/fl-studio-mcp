@@ -23,14 +23,14 @@ Requirements for Song Building & Mixing milestone. Each maps to roadmap phases.
 
 ### Playlist Control
 
-- [ ] **PLAY-01**: Get playlist track count and names
-- [ ] **PLAY-02**: Mute/unmute playlist tracks
-- [ ] **PLAY-03**: Solo/unsolo playlist tracks
-- [ ] **PLAY-04**: Get/set playlist track name and color
-- [ ] **PLAY-05**: Navigate to markers by name or index
-- [ ] **PLAY-06**: Add time markers at current position or specific time
-- [ ] **PLAY-07**: List all markers in project
-- [ ] **PLAY-08**: Trigger live clips in performance mode
+- [x] **PLAY-01**: Get playlist track count and names
+- [x] **PLAY-02**: Mute/unmute playlist tracks
+- [x] **PLAY-03**: Solo/unsolo playlist tracks
+- [x] **PLAY-04**: Get/set playlist track name and color
+- [x] **PLAY-05**: Navigate to markers by name or index
+- [x] **PLAY-06**: Add time markers at current position or specific time
+- [x] **PLAY-07**: List all markers in project
+- [x] **PLAY-08**: Trigger live clips in performance mode
 
 ### Project Control
 
@@ -82,14 +82,14 @@ Which phases cover which requirements.
 | MIX-09 | Phase 9 | Complete |
 | MIX-10 | Phase 9 | Complete |
 | MIX-11 | Phase 9 | Complete |
-| PLAY-01 | Phase 10 | Pending |
-| PLAY-02 | Phase 10 | Pending |
-| PLAY-03 | Phase 10 | Pending |
-| PLAY-04 | Phase 10 | Pending |
-| PLAY-05 | Phase 10 | Pending |
-| PLAY-06 | Phase 10 | Pending |
-| PLAY-07 | Phase 10 | Pending |
-| PLAY-08 | Phase 10 | Pending |
+| PLAY-01 | Phase 10 | Complete |
+| PLAY-02 | Phase 10 | Complete |
+| PLAY-03 | Phase 10 | Complete |
+| PLAY-04 | Phase 10 | Complete |
+| PLAY-05 | Phase 10 | Complete |
+| PLAY-06 | Phase 10 | Complete |
+| PLAY-07 | Phase 10 | Complete |
+| PLAY-08 | Phase 10 | Complete |
 | PROJ-01 | Phase 11 | Pending |
 | PROJ-02 | Phase 11 | Pending |
 | PROJ-03 | Phase 11 | Pending |
@@ -104,4 +104,4 @@ Which phases cover which requirements.
 
 ---
 *Requirements defined: 2026-02-25*
-*Last updated: 2026-02-25 after Phase 9 completion*
+*Last updated: 2026-02-25 after Phase 10 completion*

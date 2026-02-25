@@ -41,7 +41,7 @@ See: .planning/milestones/v2.0-ROADMAP.md
 
 - [x] **Phase 8: Mixer Core** - Volume, pan, mute, solo, and track organization (2026-02-25)
 - [x] **Phase 9: Mixer Routing & Advanced** - Send routing, EQ, and effect slot access (2026-02-25)
-- [ ] **Phase 10: Playlist & Markers** - Track management and marker navigation
+- [x] **Phase 10: Playlist & Markers** - Track management and marker navigation (2026-02-25)
 - [ ] **Phase 11: Project Controls** - Tempo, playback position, and undo/redo
 
 ## Phase Details
@@ -93,9 +93,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 10-01-PLAN.md - Playlist track management (get info, mute, solo, name, color)
-- [ ] 10-02-PLAN.md - Markers (add, list, navigate)
-- [ ] 10-03-PLAN.md - Live clip triggering (performance mode)
+- [x] 10-01-PLAN.md - Playlist track management (get info, mute, solo, name, color)
+- [x] 10-02-PLAN.md - Markers (add, list, navigate)
+- [x] 10-03-PLAN.md - Live clip triggering (performance mode)
 
 ### Phase 11: Project Controls
 **Goal**: Users can control project-level settings like tempo and playback position
@@ -129,9 +129,9 @@ Phases execute in numeric order: 8 -> 9 -> 10 -> 11
 | 7. Sample Manipulation | v2.0 | 3/3 | Complete | 2026-02-25 |
 | 8. Mixer Core | v2.1 | 2/2 | Complete | 2026-02-25 |
 | 9. Mixer Routing & Advanced | v2.1 | 2/2 | Complete | 2026-02-25 |
-| 10. Playlist & Markers | v2.1 | 0/3 | Planned | - |
+| 10. Playlist & Markers | v2.1 | 3/3 | Complete | 2026-02-25 |
 | 11. Project Controls | v2.1 | 0/2 | Not started | - |
 
 ---
 *Roadmap updated: 2026-02-25*
-*Milestone: v2.1 Song Building & Mixing (Phase 10 planned)*
+*Milestone: v2.1 Song Building & Mixing (Phase 10 complete)*
