@@ -552,4 +552,91 @@ export function registerMixerTools(
       }
     },
   );
+
+  // ── get_mixer_eq ──────────────────────────────────────────────────────────
+
+  const getMixerEqSchema = {
+    track: z.union([z.number().int().min(0), z.string()])
+      .describe('Mixer track (index like 0=Master, 1+=inserts, OR track name for lookup)'),
+  };
+
+  server.tool(
+    'get_mixer_eq',
+    'Get EQ settings for a mixer track (by index or name). Returns all 3 bands with gain (normalized + dB), frequency (normalized + Hz), and bandwidth.',
+    getMixerEqSchema,
+    async ({ track }) => {
+      try {
+        const params = typeof track === 'number' ? { index: track } : { name: track };
+        const result = await connection.executeCommand('mixer.get_eq', params);
+
+        if (!result.success) {
+          return {
+            content: [{ type: 'text', text: `Failed to get mixer EQ: ${JSON.stringify(result)}` }],
+            isError: true,
+          };
+        }
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{ type: 'text', text: `Error getting mixer EQ: ${message}` }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // ── set_mixer_eq_band ─────────────────────────────────────────────────────
+
+  const setMixerEqBandSchema = {
+    track: z.union([z.number().int().min(0), z.string()])
+      .describe('Mixer track (index like 0=Master, 1+=inserts, OR track name for lookup)'),
+    band: z.number().int().min(0).max(2)
+      .describe('EQ band index (0=Low, 1=Mid, 2=High)'),
+    gain: z.number().min(0).max(1).optional()
+      .describe('Normalized gain (0-1, where 0.5=0dB)'),
+    frequency: z.number().min(0).max(1).optional()
+      .describe('Normalized frequency (0-1)'),
+    bandwidth: z.number().min(0).max(1).optional()
+      .describe('Normalized bandwidth (0-1)'),
+  };
+
+  server.tool(
+    'set_mixer_eq_band',
+    'Set EQ band parameters for a mixer track. Band: 0=Low, 1=Mid, 2=High. Values are normalized 0-1. At least one of gain/frequency/bandwidth should be provided.',
+    setMixerEqBandSchema,
+    async ({ track, band, gain, frequency, bandwidth }) => {
+      try {
+        const trackParam = typeof track === 'number' ? { index: track } : { name: track };
+
+        // Build params with only defined values
+        const eqParams: Record<string, unknown> = { ...trackParam, band };
+        if (gain !== undefined) eqParams.gain = gain;
+        if (frequency !== undefined) eqParams.frequency = frequency;
+        if (bandwidth !== undefined) eqParams.bandwidth = bandwidth;
+
+        const result = await connection.executeCommand('mixer.set_eq_band', eqParams);
+
+        if (!result.success) {
+          return {
+            content: [{ type: 'text', text: `Failed to set mixer EQ band: ${JSON.stringify(result)}` }],
+            isError: true,
+          };
+        }
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{ type: 'text', text: `Error setting mixer EQ band: ${message}` }],
+          isError: true,
+        };
+      }
+    },
+  );
 }
