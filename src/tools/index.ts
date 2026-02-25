@@ -19,6 +19,7 @@ import { registerRenderTools } from './render.js';
 import { registerSampleTools } from './sample.js';
 import { registerMixerTools } from './mixer.js';
 import { registerPlaylistTools } from './playlist.js';
+import { registerProjectTools } from './project.js';
 
 /**
  * Register all MCP tools with the server
@@ -41,6 +42,7 @@ export function registerTools(
   registerSampleTools(server, connection);
   registerMixerTools(server, connection);
   registerPlaylistTools(server, connection);
+  registerProjectTools(server, connection);
 
-  console.error('[fl-studio-mcp] Registered tools: transport, state, patterns, notes, humanize, plugins, serum, render, sample, mixer, playlist');
+  console.error('[fl-studio-mcp] Registered tools: transport, state, patterns, notes, humanize, plugins, serum, render, sample, mixer, playlist, project');
 }
