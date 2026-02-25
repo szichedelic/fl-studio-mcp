@@ -79,4 +79,30 @@ export function registerProjectTools(
       };
     }
   );
+
+  // Undo
+  server.tool(
+    'undo',
+    'Undo the last operation in FL Studio',
+    {},
+    async () => {
+      const result = await connection.executeCommand('project.undo', {});
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      };
+    }
+  );
+
+  // Redo
+  server.tool(
+    'redo',
+    'Redo the last undone operation in FL Studio',
+    {},
+    async () => {
+      const result = await connection.executeCommand('project.redo', {});
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      };
+    }
+  );
 }
