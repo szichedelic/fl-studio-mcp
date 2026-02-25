@@ -103,10 +103,11 @@ Plans:
   1. User can say "render this pattern" and receive clear step-by-step instructions (suggested filename, output path, exact FL Studio steps)
   2. System automatically detects when a rendered WAV file appears and confirms it is ready for downstream processing
   3. Rendered files are tracked and available for sample manipulation in Phase 7
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 06-01: TBD
+- [ ] 06-01-PLAN.md -- Install chokidar, audio types, render registry, and WAV file watcher
+- [ ] 06-02-PLAN.md -- MCP render tools (render_pattern, list_renders, check_render) and tool registration
 
 ### Phase 7: Sample Manipulation
 **Goal**: Users can transform audio samples and execute full resampling workflows
@@ -135,10 +136,10 @@ Phases execute in numeric order: 3 -> 4 -> 5 -> 6 -> 7
 | 3. Humanization Engine | v2.0 | 3/3 | Complete | 2026-02-24 |
 | 4. Generic Plugin Control | v2.0 | 3/3 | Complete | 2026-02-25 |
 | 5. Serum 2 Sound Design | v2.0 | 3/3 | Complete | 2026-02-24 |
-| 6. Audio Rendering Workflow | v2.0 | 0/TBD | Not started | - |
+| 6. Audio Rendering Workflow | v2.0 | 0/2 | Planning complete | - |
 | 7. Sample Manipulation | v2.0 | 0/TBD | Not started | - |
 
 ---
 *Created: 2026-02-23 (v1.0 phases)*
-*Updated: 2026-02-24 (Phase 5 complete)*
+*Updated: 2026-02-25 (Phase 6 planned)*
 *v2.0 requirements: 20 | v2.0 phases: 5 | Depth: comprehensive*
