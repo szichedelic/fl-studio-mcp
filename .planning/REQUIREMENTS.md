@@ -34,12 +34,12 @@ Requirements for Song Building & Mixing milestone. Each maps to roadmap phases.
 
 ### Project Control
 
-- [ ] **PROJ-01**: Get current tempo (BPM)
-- [ ] **PROJ-02**: Set tempo (BPM) via processRECEvent
-- [ ] **PROJ-03**: Get current playback position (bars, beats, ticks)
-- [ ] **PROJ-04**: Set playback position / jump to position
-- [ ] **PROJ-05**: Undo last operation
-- [ ] **PROJ-06**: Redo last undone operation
+- [x] **PROJ-01**: Get current tempo (BPM)
+- [x] **PROJ-02**: Set tempo (BPM) via processRECEvent
+- [x] **PROJ-03**: Get current playback position (bars, beats, ticks)
+- [x] **PROJ-04**: Set playback position / jump to position
+- [x] **PROJ-05**: Undo last operation
+- [x] **PROJ-06**: Redo last undone operation
 
 ## Out of Scope
 
@@ -90,12 +90,12 @@ Which phases cover which requirements.
 | PLAY-06 | Phase 10 | Complete |
 | PLAY-07 | Phase 10 | Complete |
 | PLAY-08 | Phase 10 | Complete |
-| PROJ-01 | Phase 11 | Pending |
-| PROJ-02 | Phase 11 | Pending |
-| PROJ-03 | Phase 11 | Pending |
-| PROJ-04 | Phase 11 | Pending |
-| PROJ-05 | Phase 11 | Pending |
-| PROJ-06 | Phase 11 | Pending |
+| PROJ-01 | Phase 11 | Complete |
+| PROJ-02 | Phase 11 | Complete |
+| PROJ-03 | Phase 11 | Complete |
+| PROJ-04 | Phase 11 | Complete |
+| PROJ-05 | Phase 11 | Complete |
+| PROJ-06 | Phase 11 | Complete |
 
 **Coverage:**
 - v2.1 requirements: 25 total
@@ -104,4 +104,4 @@ Which phases cover which requirements.
 
 ---
 *Requirements defined: 2026-02-25*
-*Last updated: 2026-02-25 after Phase 10 completion*
+*Last updated: 2026-02-25 after Phase 11 completion (v2.1 COMPLETE)*
