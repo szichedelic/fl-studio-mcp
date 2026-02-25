@@ -118,11 +118,12 @@ Plans:
   2. User can reverse or time-stretch a sample via natural language
   3. User can layer multiple audio files with stereo detune effects to create rich textures
   4. User can execute a full resampling workflow: generate notes, render to audio, manipulate the audio, and get instructions to reload into FL Studio
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 07-01: TBD
-- [ ] 07-02: TBD
+- [ ] 07-01-PLAN.md -- SoxRunner class, audio types, and file resolution utilities
+- [ ] 07-02-PLAN.md -- Basic sample tools (pitch, reverse, timestretch, info) and tool registration
+- [ ] 07-03-PLAN.md -- Stereo detune/layer tool (sample_layer) and final build verification
 
 ## Progress
 
@@ -137,9 +138,9 @@ Phases execute in numeric order: 3 -> 4 -> 5 -> 6 -> 7
 | 4. Generic Plugin Control | v2.0 | 3/3 | Complete | 2026-02-25 |
 | 5. Serum 2 Sound Design | v2.0 | 3/3 | Complete | 2026-02-24 |
 | 6. Audio Rendering Workflow | v2.0 | 2/2 | Complete | 2026-02-25 |
-| 7. Sample Manipulation | v2.0 | 0/TBD | Not started | - |
+| 7. Sample Manipulation | v2.0 | 0/3 | Not started | - |
 
 ---
 *Created: 2026-02-23 (v1.0 phases)*
-*Updated: 2026-02-25 (Phase 6 complete)*
+*Updated: 2026-02-25 (Phase 7 planned)*
 *v2.0 requirements: 20 | v2.0 phases: 5 | Depth: comprehensive*
