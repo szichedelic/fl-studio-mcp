@@ -19,7 +19,7 @@ Send routing between mixer tracks, EQ band control, and effect slot access. User
 
 ### Send Level Interface
 - Level format: Accept BOTH percentage (0-100%) and decibels, normalize internally
-- Pre/post fader: Support BOTH modes (pre-fader for effects, post for parallel)
+- Pre/post fader: **API LIMITATION** - FL Studio `setRouteToLevel()` does not expose pre/post fader mode. This is not controllable via the MIDI scripting API. Document as limitation, not a failed deliverable.
 
 ### Claude's Discretion
 - Bus naming convention (whether to auto-suffix "Bus")
@@ -42,9 +42,19 @@ Send routing between mixer tracks, EQ band control, and effect slot access. User
 <deferred>
 ## Deferred Ideas
 
-None — discussion stayed within phase scope
+None - discussion stayed within phase scope
 
 </deferred>
+
+<limitations>
+## Known API Limitations
+
+### Pre/Post Fader Send Mode
+The FL Studio Python API does not expose pre/post fader mode for sends. The `setRouteToLevel()` function only accepts source, destination, and level parameters - there is no mode parameter for pre-fader vs post-fader routing.
+
+This limitation is documented in 09-RESEARCH.md (Pitfall 6) and confirmed by API inspection. Users who need pre-fader sends will need to configure this manually in FL Studio's mixer interface.
+
+</limitations>
 
 ---
 
