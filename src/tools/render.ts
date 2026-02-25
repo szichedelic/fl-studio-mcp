@@ -74,8 +74,11 @@ export function registerRenderTools(
         try {
           const stateResult = await connection.executeCommand('state.patterns', {});
           if (stateResult.success) {
-            const data = stateResult as unknown as { currentName?: string; name?: string };
-            patternName = data.currentName || data.name || 'Pattern';
+            const data = stateResult as unknown as Record<string, unknown>;
+            const patterns = data.patterns as Array<{ index: number; name: string }> | undefined;
+            const currentIdx = data.currentPattern as number | undefined;
+            const current = patterns?.find(p => p.index === currentIdx);
+            patternName = current?.name || 'Pattern';
           }
         } catch {
           // FL Studio not connected — use generic name
