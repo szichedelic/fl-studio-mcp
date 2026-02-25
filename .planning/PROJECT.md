@@ -8,6 +8,15 @@ An MCP (Model Context Protocol) server that enables natural language control of 
 
 **Natural language → human-sounding music.** Stay in creative flow instead of clicking through menus. Produce professional-quality tracks 10x faster while maintaining the imperfections that make music feel alive.
 
+## Current Milestone: v2.1 Song Building & Mixing
+
+**Goal:** Enable full song creation — from arranging patterns into song structure through mixing and balancing — with abstract primitives that support natural conversation.
+
+**Target features:**
+- Mixer control (volume, pan, mute, solo, routing, plugin slots)
+- Playlist/arrangement (place patterns on timeline, track management)
+- Project-level controls (tempo, time signature, markers)
+
 ## Current State
 
 **Shipped:** v2.0 Production Pipeline (2026-02-25)
