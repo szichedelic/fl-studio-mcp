@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 
 ## Current Position
 
-Phase: 11 of 11 (Project Controls) - IN PROGRESS
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-25 - Completed 11-01-PLAN.md
+Phase: 11 of 11 (Project Controls) - COMPLETE
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-02-25 - Completed 11-02-PLAN.md
 
-Progress: [####################] 100% v2.0 | [█████████░] 89% v2.1 (8/9 plans)
+Progress: [####################] 100% v2.0 | [██████████] 100% v2.1 (9/9 plans)
 
 ## Performance Metrics
 
@@ -29,7 +29,7 @@ Progress: [####################] 100% v2.0 | [█████████░] 89
 | 8. Mixer Core | 2/2 | Complete |
 | 9. Mixer Routing | 2/2 | Complete |
 | 10. Playlist & Markers | 3/3 | Complete |
-| 11. Project Controls | 1/2 | In progress |
+| 11. Project Controls | 2/2 | Complete |
 
 ## Accumulated Context
 
@@ -55,6 +55,7 @@ Recent decisions affecting v2.1 work:
 - Performance Mode required for live clip functions to work
 - Tempo: bpm * 1000 for processRECEvent, REC_Control | REC_UpdateControl for UI update
 - Position setSongPos: only modes -1, 0, 1, 2 work for writing (3-5 are read-only)
+- Undo/Redo: use undoUp()/undoDown(), NOT undo() (undo toggles unpredictably)
 
 ### From v2.0
 
@@ -71,5 +72,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Completed 11-01-PLAN.md (Tempo and position control)
+Stopped at: Completed 11-02-PLAN.md (Undo/redo controls) - v2.1 COMPLETE
 Resume file: None
