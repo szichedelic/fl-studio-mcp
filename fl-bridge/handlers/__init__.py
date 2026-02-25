@@ -23,3 +23,4 @@ from handlers import patterns
 from handlers import pianoroll
 from handlers import mixer
 from handlers import playlist
+from handlers import project
