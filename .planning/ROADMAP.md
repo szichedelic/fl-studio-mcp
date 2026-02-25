@@ -75,8 +75,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 09-01: Mixer routing (get/set routing, send levels)
-- [ ] 09-02: Mixer EQ and effect slots (EQ bands, plugin slot access)
+- [ ] 09-01-PLAN.md - Python handlers: routing (get/set routes, send levels) and EQ (get/set bands)
+- [ ] 09-02-PLAN.md - TypeScript tools: routing, EQ, and effect slot convenience wrappers
 
 ### Phase 10: Playlist & Markers
 **Goal**: Users can organize playlist tracks and navigate via markers
