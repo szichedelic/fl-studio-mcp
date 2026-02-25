@@ -13,6 +13,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ConnectionManager } from '../bridge/connection.js';
 import { z } from 'zod';
+import { paramCache } from '../plugins/param-cache.js';
+import { shadowState } from '../plugins/shadow-state.js';
 
 /**
  * Convert RGB hex string (#RRGGBB) to FL Studio BGR integer.
@@ -634,6 +636,205 @@ export function registerMixerTools(
         const message = error instanceof Error ? error.message : String(error);
         return {
           content: [{ type: 'text', text: `Error setting mixer EQ band: ${message}` }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // ── discover_mixer_effect ─────────────────────────────────────────────────
+
+  const discoverMixerEffectSchema = {
+    track: z.number().int().min(0)
+      .describe('Mixer track index (0=Master, 1+=insert tracks)'),
+    slot: z.number().int().min(0).max(9)
+      .describe('Effect slot index (0-9)'),
+  };
+
+  server.tool(
+    'discover_mixer_effect',
+    "Discover a plugin in a mixer track's effect slot. Returns plugin name and parameter list. Must be called before get/set_mixer_effect_param.",
+    discoverMixerEffectSchema,
+    async ({ track, slot }) => {
+      try {
+        const result = await connection.executeCommand('plugins.discover', {
+          index: track,
+          slotIndex: slot,
+        });
+
+        if (!result.success) {
+          return {
+            content: [{ type: 'text', text: `Failed to discover mixer effect: ${JSON.stringify(result)}` }],
+            isError: true,
+          };
+        }
+
+        // Store in paramCache - track IS channelIndex for mixer slots
+        const response = result as { success: boolean; pluginName?: string; params?: Array<{ index: number; name: string; value: number }> };
+        if (response.pluginName && response.params) {
+          paramCache.store(track, slot, response.pluginName, response.params);
+        }
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify({
+            success: true,
+            pluginName: response.pluginName,
+            paramCount: response.params?.length ?? 0,
+            track,
+            slot,
+          }, null, 2) }],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{ type: 'text', text: `Error discovering mixer effect: ${message}` }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // ── get_mixer_effect_param ────────────────────────────────────────────────
+
+  const getMixerEffectParamSchema = {
+    track: z.number().int().min(0)
+      .describe('Mixer track index (0=Master, 1+=insert tracks)'),
+    slot: z.number().int().min(0).max(9)
+      .describe('Effect slot index (0-9)'),
+    name: z.string()
+      .describe('Parameter name (fuzzy matched - partial names work)'),
+  };
+
+  server.tool(
+    'get_mixer_effect_param',
+    'Get a parameter value from a mixer effect slot plugin by name. Requires prior discover_mixer_effect call.',
+    getMixerEffectParamSchema,
+    async ({ track, slot, name }) => {
+      try {
+        // Check cache first - track IS channelIndex for mixer slots
+        const cached = paramCache.get(track, slot);
+        if (!cached) {
+          return {
+            content: [{ type: 'text', text: `Plugin not discovered. Call discover_mixer_effect first for track ${track}, slot ${slot}.` }],
+            isError: true,
+          };
+        }
+
+        // Resolve parameter name
+        const resolved = paramCache.resolveParam(track, slot, name);
+        if (!resolved) {
+          const availableParams = cached.params.slice(0, 20).map(p => p.name).join(', ');
+          return {
+            content: [{ type: 'text', text: `Parameter "${name}" not found. Available params include: ${availableParams}${cached.params.length > 20 ? '...' : ''}` }],
+            isError: true,
+          };
+        }
+
+        // Get value from FL Studio
+        const result = await connection.executeCommand('plugins.get_param', {
+          index: track,
+          slotIndex: slot,
+          paramIndex: resolved.index,
+        });
+
+        if (!result.success) {
+          return {
+            content: [{ type: 'text', text: `Failed to get effect param: ${JSON.stringify(result)}` }],
+            isError: true,
+          };
+        }
+
+        const response = result as { success: boolean; value?: number };
+        return {
+          content: [{ type: 'text', text: JSON.stringify({
+            success: true,
+            paramName: resolved.name,
+            paramIndex: resolved.index,
+            value: response.value,
+            track,
+            slot,
+          }, null, 2) }],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{ type: 'text', text: `Error getting mixer effect param: ${message}` }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // ── set_mixer_effect_param ────────────────────────────────────────────────
+
+  const setMixerEffectParamSchema = {
+    track: z.number().int().min(0)
+      .describe('Mixer track index (0=Master, 1+=insert tracks)'),
+    slot: z.number().int().min(0).max(9)
+      .describe('Effect slot index (0-9)'),
+    name: z.string()
+      .describe('Parameter name (fuzzy matched - partial names work)'),
+    value: z.number().min(0).max(1)
+      .describe('Normalized value (0-1)'),
+  };
+
+  server.tool(
+    'set_mixer_effect_param',
+    'Set a parameter value on a mixer effect slot plugin by name. Requires prior discover_mixer_effect call.',
+    setMixerEffectParamSchema,
+    async ({ track, slot, name, value }) => {
+      try {
+        // Check cache first - track IS channelIndex for mixer slots
+        const cached = paramCache.get(track, slot);
+        if (!cached) {
+          return {
+            content: [{ type: 'text', text: `Plugin not discovered. Call discover_mixer_effect first for track ${track}, slot ${slot}.` }],
+            isError: true,
+          };
+        }
+
+        // Resolve parameter name
+        const resolved = paramCache.resolveParam(track, slot, name);
+        if (!resolved) {
+          const availableParams = cached.params.slice(0, 20).map(p => p.name).join(', ');
+          return {
+            content: [{ type: 'text', text: `Parameter "${name}" not found. Available params include: ${availableParams}${cached.params.length > 20 ? '...' : ''}` }],
+            isError: true,
+          };
+        }
+
+        // Set value in FL Studio
+        const result = await connection.executeCommand('plugins.set_param', {
+          index: track,
+          slotIndex: slot,
+          paramIndex: resolved.index,
+          value,
+        });
+
+        if (!result.success) {
+          return {
+            content: [{ type: 'text', text: `Failed to set effect param: ${JSON.stringify(result)}` }],
+            isError: true,
+          };
+        }
+
+        // Update shadow state
+        shadowState.set(track, slot, resolved.index, value);
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify({
+            success: true,
+            paramName: resolved.name,
+            paramIndex: resolved.index,
+            value,
+            track,
+            slot,
+          }, null, 2) }],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{ type: 'text', text: `Error setting mixer effect param: ${message}` }],
           isError: true,
         };
       }
