@@ -9,6 +9,8 @@ REGISTERED HANDLERS:
 - project.set_tempo: Set project tempo (10-999 BPM)
 - project.get_position: Get playback position in multiple formats
 - project.set_position: Jump to playback position (by bars, ticks, ms, seconds)
+- project.undo: Undo last operation
+- project.redo: Redo last undone operation
 
 AUTHOR: FL Studio MCP Project
 """
@@ -197,8 +199,62 @@ def handle_project_set_position(params: Dict[str, Any]) -> Dict[str, Any]:
         return {'success': False, 'error': str(e)}
 
 
+def handle_project_undo(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Undo the last operation.
+
+    Uses general.undoUp() - NOT general.undo() which toggles unpredictably.
+
+    Args:
+        params: Empty dict (no parameters needed)
+
+    Returns:
+        dict: {success: True, action: 'undo', result: int}
+    """
+    try:
+        if general is None:
+            return {'success': False, 'error': 'General module not available'}
+
+        result = general.undoUp()
+        return {
+            'success': True,
+            'action': 'undo',
+            'result': result
+        }
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+
+def handle_project_redo(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Redo the last undone operation.
+
+    Uses general.undoDown() - NOT general.undo() which toggles unpredictably.
+
+    Args:
+        params: Empty dict (no parameters needed)
+
+    Returns:
+        dict: {success: True, action: 'redo', result: int}
+    """
+    try:
+        if general is None:
+            return {'success': False, 'error': 'General module not available'}
+
+        result = general.undoDown()
+        return {
+            'success': True,
+            'action': 'redo',
+            'result': result
+        }
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+
 # Register all project handlers
 register_handler('project.get_tempo', handle_project_get_tempo)
 register_handler('project.set_tempo', handle_project_set_tempo)
 register_handler('project.get_position', handle_project_get_position)
 register_handler('project.set_position', handle_project_set_position)
+register_handler('project.undo', handle_project_undo)
+register_handler('project.redo', handle_project_redo)
