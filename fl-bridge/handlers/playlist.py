@@ -3,6 +3,7 @@ FL Bridge Playlist Handlers
 
 Handles playlist track management: query, mute, solo, rename, and color control.
 Also handles time marker operations: list, add, and navigate to markers.
+Includes live clip triggering for Performance Mode.
 
 REGISTERED HANDLERS:
 ====================
@@ -18,6 +19,11 @@ Marker Handlers (Phase 10 Plan 02):
 - playlist.add_marker: Add time marker at bar or current position
 - playlist.jump_to_marker: Navigate to marker by name or index
 
+Live Clip Handlers (Phase 10 Plan 03):
+- playlist.trigger_clip: Trigger a live clip on a track in Performance Mode
+- playlist.stop_clips: Stop all live clips on a track
+- playlist.get_live_status: Get live clip playback status for a track
+
 IMPORTANT NOTES:
 ================
 - Playlist tracks are 1-INDEXED (first track = 1, not 0)
@@ -27,6 +33,7 @@ IMPORTANT NOTES:
 - Empty name string resets track to default name
 - Markers: No markerCount() API - must iterate until empty string
 - Markers: jumpToMarker uses RELATIVE delta, not absolute index
+- IMPORTANT: Live clip functions require Performance Mode to be enabled in FL Studio
 
 AUTHOR: FL Studio MCP Project
 """
@@ -509,6 +516,177 @@ def handle_playlist_jump_to_marker(params: Dict[str, Any]) -> Dict[str, Any]:
         return {'success': False, 'error': str(e)}
 
 
+# =============================================================================
+# LIVE CLIP HANDLERS (Phase 10 Plan 03)
+# =============================================================================
+
+
+def handle_playlist_trigger_clip(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Trigger a live clip in Performance Mode.
+
+    IMPORTANT: Performance Mode must be enabled in FL Studio for clips to play.
+    Clips must be assigned to the track in Performance Mode view.
+
+    Args:
+        params: {
+            track (int, required): Playlist track index (1-indexed, first track = 1)
+            block (int, required): Block number (0-indexed) to trigger
+        }
+
+    Returns:
+        dict: {
+            success: True,
+            track: int,
+            block: int,
+            status: int (live status after trigger)
+        }
+    """
+    try:
+        if playlist is None:
+            return {'success': False, 'error': 'Playlist module not available'}
+
+        # Validate required params
+        if 'track' not in params:
+            return {'success': False, 'error': 'Missing required parameter: track'}
+        if 'block' not in params:
+            return {'success': False, 'error': 'Missing required parameter: block'}
+
+        track = int(params['track'])
+        block = int(params['block'])
+
+        # Validate track index range (1-indexed)
+        error = _validate_playlist_track(track)
+        if error:
+            return {'success': False, 'error': error}
+
+        # Validate block is non-negative
+        if block < 0:
+            return {'success': False, 'error': f'Block must be >= 0, got {block}'}
+
+        # Trigger the live clip
+        # playlist.triggerLiveClip(track, block, flags, velocity)
+        # - track: 1-indexed playlist track
+        # - block: 0-indexed block number (or -1 to stop all)
+        # - flags: 0 = normal trigger
+        # - velocity: -1 = default (cycles through layers)
+        playlist.triggerLiveClip(track, block, 0, -1)
+
+        # Get status after trigger
+        # midi.LB_Status_Default = 0 if midi not available
+        status_flags = midi.LB_Status_Default if midi else 0
+        status = playlist.getLiveStatus(track, status_flags)
+
+        return {
+            'success': True,
+            'track': track,
+            'block': block,
+            'status': status
+        }
+
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+
+def handle_playlist_stop_clips(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Stop all live clips on a playlist track.
+
+    Requires Performance Mode to be enabled in FL Studio.
+
+    Args:
+        params: {
+            track (int, required): Playlist track index (1-indexed, first track = 1)
+        }
+
+    Returns:
+        dict: {
+            success: True,
+            track: int,
+            stopped: True
+        }
+    """
+    try:
+        if playlist is None:
+            return {'success': False, 'error': 'Playlist module not available'}
+
+        # Validate required params
+        if 'track' not in params:
+            return {'success': False, 'error': 'Missing required parameter: track'}
+
+        track = int(params['track'])
+
+        # Validate track index range (1-indexed)
+        error = _validate_playlist_track(track)
+        if error:
+            return {'success': False, 'error': error}
+
+        # Stop all clips on the track by passing block=-1
+        # playlist.triggerLiveClip(track, block, flags, velocity)
+        playlist.triggerLiveClip(track, -1, 0, -1)
+
+        return {
+            'success': True,
+            'track': track,
+            'stopped': True
+        }
+
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+
+def handle_playlist_get_live_status(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Get live clip status for a playlist track.
+
+    Status values indicate the current state of live clips on the track:
+    - The exact status values depend on FL Studio's internal state
+    - Non-zero typically indicates clips are playing or scheduled
+
+    Requires Performance Mode to be enabled in FL Studio.
+
+    Args:
+        params: {
+            track (int, required): Playlist track index (1-indexed, first track = 1)
+        }
+
+    Returns:
+        dict: {
+            success: True,
+            track: int,
+            status: int
+        }
+    """
+    try:
+        if playlist is None:
+            return {'success': False, 'error': 'Playlist module not available'}
+
+        # Validate required params
+        if 'track' not in params:
+            return {'success': False, 'error': 'Missing required parameter: track'}
+
+        track = int(params['track'])
+
+        # Validate track index range (1-indexed)
+        error = _validate_playlist_track(track)
+        if error:
+            return {'success': False, 'error': error}
+
+        # Get live status
+        # midi.LB_Status_Default = 0 if midi not available
+        status_flags = midi.LB_Status_Default if midi else 0
+        status = playlist.getLiveStatus(track, status_flags)
+
+        return {
+            'success': True,
+            'track': track,
+            'status': status
+        }
+
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+
 # Register all playlist handlers
 # Track handlers (Phase 10 Plan 01)
 register_handler('playlist.get_tracks', handle_playlist_get_tracks)
@@ -521,3 +699,8 @@ register_handler('playlist.set_color', handle_playlist_set_color)
 register_handler('playlist.list_markers', handle_playlist_list_markers)
 register_handler('playlist.add_marker', handle_playlist_add_marker)
 register_handler('playlist.jump_to_marker', handle_playlist_jump_to_marker)
+
+# Live clip handlers (Phase 10 Plan 03)
+register_handler('playlist.trigger_clip', handle_playlist_trigger_clip)
+register_handler('playlist.stop_clips', handle_playlist_stop_clips)
+register_handler('playlist.get_live_status', handle_playlist_get_live_status)
