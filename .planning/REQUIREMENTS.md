@@ -9,12 +9,12 @@ Requirements for Song Building & Mixing milestone. Each maps to roadmap phases.
 
 ### Mixer Control
 
-- [ ] **MIX-01**: Get mixer track volume, pan, mute, and solo state
-- [ ] **MIX-02**: Set mixer track volume (0.0-1.0, where 0.8 = unity/0dB)
-- [ ] **MIX-03**: Set mixer track pan (-1.0 to 1.0, where 0 = center)
-- [ ] **MIX-04**: Mute/unmute mixer tracks
-- [ ] **MIX-05**: Solo/unsolo mixer tracks
-- [ ] **MIX-06**: Get/set mixer track name and color
+- [x] **MIX-01**: Get mixer track volume, pan, mute, and solo state
+- [x] **MIX-02**: Set mixer track volume (0.0-1.0, where 0.8 = unity/0dB)
+- [x] **MIX-03**: Set mixer track pan (-1.0 to 1.0, where 0 = center)
+- [x] **MIX-04**: Mute/unmute mixer tracks
+- [x] **MIX-05**: Solo/unsolo mixer tracks
+- [x] **MIX-06**: Get/set mixer track name and color
 - [ ] **MIX-07**: Get mixer routing state (which tracks send to which)
 - [ ] **MIX-08**: Set mixer routing (send track A to track B)
 - [ ] **MIX-09**: Set send levels per route
@@ -71,12 +71,12 @@ Which phases cover which requirements.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MIX-01 | Phase 8 | Pending |
-| MIX-02 | Phase 8 | Pending |
-| MIX-03 | Phase 8 | Pending |
-| MIX-04 | Phase 8 | Pending |
-| MIX-05 | Phase 8 | Pending |
-| MIX-06 | Phase 8 | Pending |
+| MIX-01 | Phase 8 | Complete |
+| MIX-02 | Phase 8 | Complete |
+| MIX-03 | Phase 8 | Complete |
+| MIX-04 | Phase 8 | Complete |
+| MIX-05 | Phase 8 | Complete |
+| MIX-06 | Phase 8 | Complete |
 | MIX-07 | Phase 9 | Pending |
 | MIX-08 | Phase 9 | Pending |
 | MIX-09 | Phase 9 | Pending |
@@ -104,4 +104,4 @@ Which phases cover which requirements.
 
 ---
 *Requirements defined: 2026-02-25*
-*Last updated: 2026-02-25 after roadmap creation*
+*Last updated: 2026-02-25 after Phase 8 completion*
