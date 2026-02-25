@@ -664,6 +664,179 @@ def handle_mixer_set_route_level(params: Dict[str, Any]) -> Dict[str, Any]:
         return {'success': False, 'error': str(e)}
 
 
+# =============================================================================
+# EQ HANDLERS (Phase 9)
+# =============================================================================
+
+
+def handle_mixer_get_eq(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Get all EQ band settings for a mixer track.
+
+    Args:
+        params: {
+            index (int, optional): Track index OR
+            name (str, optional): Track name (case-insensitive, partial match)
+            At least one of index or name required.
+        }
+
+    Returns:
+        dict: {
+            success: True,
+            track: int,
+            trackName: str,
+            bands: [{band, name, gain, gainDb, frequency, frequencyHz, bandwidth}]
+        }
+    """
+    try:
+        if mixer is None:
+            return {'success': False, 'error': 'Mixer module not available'}
+
+        # Get track reference (index or name)
+        track_ref = params.get('index') if 'index' in params else params.get('name')
+        if track_ref is None:
+            return {'success': False, 'error': 'Missing required parameter: index or name'}
+
+        # Resolve to index
+        index = _resolve_track_ref(track_ref)
+        if index is None:
+            return {'success': False, 'error': f'Could not resolve track reference: {track_ref}'}
+
+        # Validate index range
+        error = _validate_track_index(index)
+        if error:
+            return {'success': False, 'error': error}
+
+        # Get EQ band count (typically 3)
+        band_count = mixer.getEqBandCount()
+        bands = []
+
+        for band in range(band_count):
+            band_name = EQ_BAND_NAMES.get(band, f'Band {band}')
+            bands.append({
+                'band': band,
+                'name': band_name,
+                'gain': mixer.getEqGain(index, band),
+                'gainDb': mixer.getEqGain(index, band, 1),
+                'frequency': mixer.getEqFrequency(index, band),
+                'frequencyHz': mixer.getEqFrequency(index, band, 1),
+                'bandwidth': mixer.getEqBandwidth(index, band)
+            })
+
+        return {
+            'success': True,
+            'track': index,
+            'trackName': mixer.getTrackName(index),
+            'bands': bands
+        }
+
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+
+def handle_mixer_set_eq_band(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Set EQ band parameters for a mixer track.
+
+    Args:
+        params: {
+            index (int or str, required): Track index or name
+            band (int, required): Band index (0=Low, 1=Mid, 2=High)
+            gain (float, optional): Gain (0.0 to 1.0 normalized)
+            frequency (float, optional): Frequency (0.0 to 1.0 normalized)
+            bandwidth (float, optional): Bandwidth (0.0 to 1.0 normalized)
+            At least one of gain, frequency, or bandwidth required.
+        }
+
+    Returns:
+        dict: {
+            success: True,
+            track: int,
+            band: int,
+            bandName: str,
+            gain: float,
+            gainDb: float,
+            frequency: float,
+            frequencyHz: float,
+            bandwidth: float
+        }
+    """
+    try:
+        if mixer is None:
+            return {'success': False, 'error': 'Mixer module not available'}
+
+        # Validate required params
+        if 'index' not in params and 'name' not in params:
+            return {'success': False, 'error': 'Missing required parameter: index or name'}
+        if 'band' not in params:
+            return {'success': False, 'error': 'Missing required parameter: band'}
+
+        # Get track reference (index or name)
+        track_ref = params.get('index') if 'index' in params else params.get('name')
+
+        # Resolve to index
+        index = _resolve_track_ref(track_ref)
+        if index is None:
+            return {'success': False, 'error': f'Could not resolve track reference: {track_ref}'}
+
+        # Validate index range
+        error = _validate_track_index(index)
+        if error:
+            return {'success': False, 'error': error}
+
+        band = int(params['band'])
+
+        # Validate band range
+        band_count = mixer.getEqBandCount()
+        if band < 0 or band >= band_count:
+            return {'success': False, 'error': f'Band {band} out of range (0 to {band_count - 1})'}
+
+        # Check at least one parameter to set
+        has_gain = 'gain' in params
+        has_frequency = 'frequency' in params
+        has_bandwidth = 'bandwidth' in params
+
+        if not (has_gain or has_frequency or has_bandwidth):
+            return {'success': False, 'error': 'At least one of gain, frequency, or bandwidth required'}
+
+        # Set parameters that are provided
+        if has_gain:
+            gain = float(params['gain'])
+            if gain < 0.0 or gain > 1.0:
+                return {'success': False, 'error': f'Gain {gain} out of range (0.0 to 1.0)'}
+            mixer.setEqGain(index, band, gain)
+
+        if has_frequency:
+            frequency = float(params['frequency'])
+            if frequency < 0.0 or frequency > 1.0:
+                return {'success': False, 'error': f'Frequency {frequency} out of range (0.0 to 1.0)'}
+            mixer.setEqFrequency(index, band, frequency)
+
+        if has_bandwidth:
+            bandwidth = float(params['bandwidth'])
+            if bandwidth < 0.0 or bandwidth > 1.0:
+                return {'success': False, 'error': f'Bandwidth {bandwidth} out of range (0.0 to 1.0)'}
+            mixer.setEqBandwidth(index, band, bandwidth)
+
+        # Readback all values for response
+        band_name = EQ_BAND_NAMES.get(band, f'Band {band}')
+
+        return {
+            'success': True,
+            'track': index,
+            'band': band,
+            'bandName': band_name,
+            'gain': mixer.getEqGain(index, band),
+            'gainDb': mixer.getEqGain(index, band, 1),
+            'frequency': mixer.getEqFrequency(index, band),
+            'frequencyHz': mixer.getEqFrequency(index, band, 1),
+            'bandwidth': mixer.getEqBandwidth(index, band)
+        }
+
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+
 # Register all mixer handlers
 register_handler('mixer.set_volume', handle_mixer_set_volume)
 register_handler('mixer.set_pan', handle_mixer_set_pan)
@@ -677,3 +850,7 @@ register_handler('mixer.get_routing', handle_mixer_get_routing)
 register_handler('mixer.get_track_sends', handle_mixer_get_track_sends)
 register_handler('mixer.set_route', handle_mixer_set_route)
 register_handler('mixer.set_route_level', handle_mixer_set_route_level)
+
+# EQ handlers (Phase 9)
+register_handler('mixer.get_eq', handle_mixer_get_eq)
+register_handler('mixer.set_eq_band', handle_mixer_set_eq_band)
