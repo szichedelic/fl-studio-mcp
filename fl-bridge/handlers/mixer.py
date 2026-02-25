@@ -1,7 +1,8 @@
 """
 FL Bridge Mixer Handlers
 
-Handles mixer track mutations: volume, pan, mute, solo, name, color.
+Handles mixer track mutations and queries: volume, pan, mute, solo, name, color,
+routing, and EQ control.
 
 REGISTERED HANDLERS:
 ====================
@@ -11,13 +12,27 @@ REGISTERED HANDLERS:
 - mixer.solo: Solo/unsolo mixer track (explicit, not toggle)
 - mixer.set_name: Set mixer track name
 - mixer.set_color: Set mixer track color (BGR format)
+- mixer.get_routing: Get full routing table (all sends)
+- mixer.get_track_sends: Get sends for a specific track (by index or name)
+- mixer.set_route: Create or remove a route between tracks
+- mixer.set_route_level: Set send level for existing route
+- mixer.get_eq: Get track EQ band settings (all 3 bands)
+- mixer.set_eq_band: Set EQ band parameters (gain, frequency, bandwidth)
+
+TRACK REFERENCES:
+=================
+- Routing and EQ handlers accept BOTH index (int) and name (str)
+- Name lookup is case-insensitive and supports partial matching
+- Index 0 = Master track, 1+ = insert tracks
 
 IMPORTANT NOTES:
 ================
-- Volume 0.8 = unity gain (0dB), not 1.0
+- Volume/send levels: 0.8 = unity gain (0dB), not 1.0
 - Color format is BGR (0x--BBGGRR), not RGB
 - Mute/solo use explicit 1/0, NOT -1 (toggle mode)
-- Index 0 = Master track, 1+ = insert tracks
+- EQ bands: 0=Low, 1=Mid, 2=High (values are normalized 0-1)
+- Routes must exist before setting level (use set_route first)
+- Pre/post fader mode is NOT exposed in FL Studio API (known limitation)
 
 AUTHOR: FL Studio MCP Project
 """
