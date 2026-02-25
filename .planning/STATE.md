@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 ## Current Position
 
 Phase: 8 of 11 (Mixer Core)
-Plan: 0 of 2 in current phase
-Status: Ready to plan
-Last activity: 2026-02-25 - Roadmap created for v2.1
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-25 - Completed 08-01-PLAN.md (Mixer Mutation Handlers)
 
-Progress: [####################] 100% v2.0 | [░░░░░░░░░░] 0% v2.1
+Progress: [####################] 100% v2.0 | [█░░░░░░░░░] 12.5% v2.1 (1/8 plans)
 
 ## Performance Metrics
 
@@ -43,6 +43,7 @@ Recent decisions affecting v2.1 work:
 - Tempo IS settable via `general.processRECEvent(midi.REC_Tempo, bpm*1000, flags)`
 - Must call `mixer.afterRoutingChanged()` after batch routing operations
 - NO API for playlist clip placement - track management only
+- Use explicit 1/0 for mute/solo, NOT -1 (toggle mode is stateless/unpredictable)
 
 ### From v2.0
 
@@ -59,5 +60,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: v2.1 roadmap created, ready to plan Phase 8
+Stopped at: Completed 08-01-PLAN.md (Mixer Mutation Handlers)
 Resume file: None
