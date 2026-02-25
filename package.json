@@ -21,6 +21,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
     "alea": "^1.0.1",
+    "chokidar": "^4.0.3",
     "midi": "^2.0.0",
     "simplex-noise": "^4.0.3",
     "tonal": "^6.4.3",
