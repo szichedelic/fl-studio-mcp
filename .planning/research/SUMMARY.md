@@ -1,227 +1,276 @@
 # Project Research Summary
 
-**Project:** FL Studio MCP Server — v2.0 Production Pipeline
+**Project:** FL Studio MCP Server v2.1 - Song Building and Mixing
 **Domain:** DAW automation / AI music production assistant
-**Researched:** 2026-02-23
-**Confidence:** MEDIUM
+**Researched:** 2026-02-25
+**Confidence:** HIGH
 
 ## Executive Summary
 
-The v2.0 Production Pipeline adds four capability areas to the existing FL Studio MCP architecture: humanization, plugin parameter control (targeting Serum 2), audio rendering, and sample manipulation. The recommended approach is to sequence these in risk order — lowest-risk first — because the three capability areas have a hard dependency chain: plugin control must be validated before Serum 2 can be built, and audio rendering must be resolved before sample manipulation can proceed. All four areas build on an existing, proven SysEx-over-MIDI bridge that works reliably for note generation and transport control.
+FL Studio's Python API provides comprehensive mixer track control (volume, pan, mute, solo, routing) with well-documented functions. Playlist track management is similarly robust for track properties. However, the v2.1 milestone reveals critical gaps: there is NO API for placing patterns/clips on the playlist timeline, tempo is READ-ONLY (cannot be set programmatically), and time signature access is unclear or nonexistent. These are not implementation challenges but hard API boundaries.
 
-The primary architectural finding that drives every phase decision is that humanization belongs entirely in Node.js as a pre-processing step on note data, not in FL Studio's Python environment. This means Phase 1 has zero new FL Studio API surface and can be built and tested in isolation. Plugin parameter control (Phase 2) is well-documented via the `plugins` module API stubs, but has known bugs (`getParamValue` unreliable for VSTs) that require shadow state as a mitigation. Audio rendering (Phase 4) is the hardest technical constraint in the entire milestone: FL Studio's Python API has no export function, no render function, and no modifier-key keyboard simulation. The practical solution is a guided workflow where the user presses Ctrl+R manually and the server watches for the resulting file via `chokidar`.
+The recommended approach is to embrace these constraints: build comprehensive mixer control with proper routing and EQ capabilities, deliver playlist track management (mute, solo, color, name), enable marker navigation, and guide users for operations the API cannot perform (clip placement, tempo changes). The architecture extends existing FL Bridge patterns cleanly with three new handler modules (mixer.py, playlist.py, project.py) following proven registration and SysEx patterns from v1.0 and v2.0.
 
-The biggest risk to scope is discovering during implementation that assumptions about Serum 2 parameter names are wrong, or that `plugins.setParamValue` is also broken for Serum 2. Both risks have mitigation strategies (runtime parameter enumeration, shadow state), but they should be treated as early spikes rather than assumed to work. The three capability areas are otherwise largely independent and can be planned as separate phases without blocking each other.
+Key risks center on index confusion (mixer is 0-indexed with track 0=Master, playlist is 1-indexed), pickup mode handling for smooth parameter changes, and routing complexity requiring explicit UI update calls. The mixer's non-linear volume scale (0.8=unity gain, not 1.0) and BGR color format (not RGB) will cause user confusion if not documented clearly. These are all manageable with proper validation and clear tool descriptions.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The existing stack (Node.js 24.x, TypeScript 5.9.x, `@modelcontextprotocol/sdk`, `zod`, `tonal`, `midi`, FL Bridge Python, loopMIDI) requires only three new runtime npm packages, one dev package, and one system tool. This is a minimal footprint for what the milestone delivers.
+**Summary:** No new dependencies required for v2.1. The existing FL Studio Python API provides all needed functions for mixer, playlist, and project control. All implementation happens through extending the existing FL Bridge (Python) and MCP server (TypeScript) architecture established in v1.0/v2.0.
 
-**Core technology additions:**
-- `simplex-noise` ^4.0.3: Organic noise generation for humanization — TypeScript-native, zero dependencies, 20ns/sample, use 1D slices of 2D noise for smooth per-note variation curves
-- `chokidar` ^4.0.0: File system watcher for detecting rendered WAV files — more reliable than `fs.watch()` across platforms
-- `node-wav` ^0.0.2: WAV file decode/encode in Node.js — minimal, stable, has TypeScript types
-- SoX 14.4.2+ (system CLI, not npm): Audio effects processing (pitch-shift, time-stretch, reverse, chop, layer) — battle-tested since 1991, handles all needed audio operations via `child_process.execFile`
-- FL Studio `plugins` module (built-in Python): Full VST parameter enumeration, get, and set — no new Python dependencies needed
+**Core technologies:**
+- FL Studio `mixer` module: Volume, pan, mute, solo, routing, EQ, stereo separation, track names/colors
+- FL Studio `playlist` module: Track properties (name, color, mute, solo, selection), track count
+- FL Studio `arrangement` module: Marker navigation, auto-time marker creation
+- FL Studio `general` module: Project info (PPQ/timebase), undo capabilities
+- Existing MCP/SysEx bridge: Proven pattern for command routing and response handling
 
-**What NOT to use:** fluent-ffmpeg (archived May 2025), soundtouchjs (browser-only, incomplete Node.js support), any ML-based humanization library (massive training data requirements, latency, complexity — algorithmic approach achieves 90% of the value).
+**Critical stack insight from STACK.md:** The v2.0 stack research focused on humanization, plugin control, and audio rendering. For v2.1, no new npm packages or system dependencies are needed. The FL Studio API already exposes all mixer and playlist functions through built-in Python modules. However, STACK.md confirms critical limitations that shape v2.1: no render API (affects workflow), no sample loading API, and no clip placement API (directly impacts playlist features).
 
 ### Expected Features
 
-**Must have (table stakes for v2.0):**
-- Timing offset engine (push/pull with Brownian walk) — core humanization; uniform random sounds worse than quantized
-- Velocity variation with per-instrument profiles — different curves for drums, piano, bass, synths
-- Swing/groove control (50-75% range, applied before humanization jitter)
-- Note length variation (legato vs. staccato per beat position)
-- Plugin parameter discovery (enumerate 4240 VST slots, filter blank names, cache name-to-index map)
-- Plugin parameter get/set by name — never by hardcoded index
-- Pattern render to WAV (guided manual workflow + file watcher)
-- Pitch shift and detune via `channels.setChannelPitch()` — confirmed API, mode 1 (cents) works, mode 2 (semitones) is broken
+**Summary:** Users expect comprehensive mixing control (all table stakes features are available via API) and basic arrangement navigation. The critical finding: pattern/clip placement on the playlist timeline is NOT possible programmatically - this removes a major expected feature from scope.
 
-**Should have (differentiators):**
-- Context-aware humanization (tight fast passages, loose slow passages)
-- Beat-position awareness (downbeats stable, upbeats looser)
-- Named humanization presets ("tight", "loose", "jazz", "lo-fi")
-- Serum 2 semantic parameter mapping (oscillator, filter, macros, FX aliases)
-- Sound type recipes (pad, bass, lead, pluck) — parameter combos for specific sounds
-- Preset navigation via `plugins.nextPreset()` / `plugins.prevPreset()`
-- Full resampling workflow (generate -> render -> manipulate -> reload)
-- SoX-powered reverse, time-stretch, and sample layering
+**Must have (table stakes):**
+- Mixer volume/pan control (0.0-1.0, -1.0 to 1.0)
+- Mixer mute/solo operations
+- Mixer track info queries (name, color, volume, pan state)
+- Playlist track properties (name, color, mute, solo)
+- Current tempo reading
+- Playback position queries
+- Marker navigation
 
-**Defer (not in v2.0):**
-- ML-based humanization — algorithmic is better for this use case
-- Full Serum 2 preset editor UI — scope explosion; Serum has its own UI
-- Real-time audio streaming — not feasible via SysEx
-- Sample chopping/slicing (Fruity Slicer/Slicex) — programmatic API access unconfirmed
-- Mixing/mastering — this is v3.0
-- Performance artifact modeling (fatigue, hand dominance) — advanced future feature
+**Should have (competitive):**
+- Mixer routing (send busses, parallel processing) via `setRouteTo` + `setRouteToLevel`
+- Stereo separation control
+- Track arming for recording
+- Plugin editor focus (quick access to effects)
+- Time markers (add auto-time markers, jump by name)
+- Natural language mixing commands ("make drums louder, pan guitar left")
+
+**Defer (cannot implement due to API gaps):**
+- Programmatic clip placement on playlist - NO API EXISTS
+- Tempo setting/automation - READ-ONLY via `getCurrentTempo()`
+- Time signature changes - NO API FOUND
+- Real-time automation curves - Would require per-tick updates
+- Full project arrangement generation - Depends on clip placement
+
+**Anti-features identified:** Automated mixing/mastering (removes creative control), full project creation (removes ownership), plugin preset recall per track (loading plugins not available).
 
 ### Architecture Approach
 
-The architecture pattern is a processing pipeline where humanization runs in TypeScript before notes reach FL Studio, plugin control uses a new FL Bridge Python handler backed by a name-to-index cache in TypeScript, audio processing runs entirely in Node.js using SoX as a CLI subprocess, and FL Studio is only involved for note placement (via existing pyscript mechanism) and sample loading (which requires user assistance due to hard API limits). The existing SysEx bridge carries plugin control commands; the file system carries audio data.
-
-The three Python scripting environments in FL Studio (MIDI Controller Scripts, Piano Roll Scripts, Edison Scripts) are completely isolated — each runs in its own interpreter with no inter-script communication. This is a hard architectural constraint that determines where each capability lives.
+**Summary:** Extend the existing SysEx bridge architecture with three new handler modules following proven v1.0/v2.0 patterns. Each handler focuses on a single FL Studio API module domain. The TypeScript MCP tools remain thin wrappers that delegate to Python handlers via the established ConnectionManager.
 
 **Major components:**
+1. **mixer.py handler** (NEW) - Registers mixer.* commands for volume, pan, mute, solo, routing, EQ using FL Studio's `mixer` module
+2. **playlist.py handler** (NEW) - Registers playlist.* commands for track properties using FL Studio's `playlist` module (note: no clip placement)
+3. **project.py handler** (NEW) - Registers project.* commands for tempo reading, markers using `general`, `arrangement`, and `transport` modules
+4. **mixer.ts tools** (NEW) - MCP tool definitions that call mixer.py handlers via executeCommand()
+5. **playlist.ts tools** (NEW) - MCP tool definitions for playlist operations
+6. **project.ts tools** (NEW) - MCP tool definitions for project-level queries
 
-1. **Humanization Engine** (`src/music/humanize.ts`) — Pure TypeScript pipeline step between note generation and pyscript serialization; applies Brownian-walk timing drift, Gaussian velocity variation, swing, and articulation changes to `NoteData[]`; stores original note data to prevent double-humanization
-2. **Plugin Parameter Layer** (`src/plugins/param-cache.ts`, `src/plugins/serum2.ts`) — Name-to-index cache built via one-time enumeration of VST parameter slots; semantic alias mapping for Serum 2; shadow state for unreliable `getParamValue`; per-command timeout configuration
-3. **FL Bridge Plugins Handler** (`fl-bridge/handlers/plugins.py`) — New Python handler: `plugins.discover`, `plugins.getParam`, `plugins.setParam`, `plugins.findPlugin`, `plugins.getPresets`, `plugins.nextPreset`, `plugins.prevPreset`; PME flag checks before all setParamValue calls
-4. **Audio Processing Layer** (`src/audio/`) — SoX CLI wrapper for pitch-shift/reverse/chop/layer, `node-wav` for WAV I/O, `chokidar` file watcher for detecting renders, sample cache for tracking processed files
-5. **New MCP Tools** (`src/tools/humanize.ts`, `plugins.ts`, `samples.ts`, `render.ts`) — Tool definitions exposing all v2.0 capabilities to Claude; optional `humanize` parameter added to existing note tools
+**Architecture patterns to follow:**
+- Handler registration pattern: Each handler self-registers via `register_handler()` on import
+- Validation in handler: Parameter bounds checking happens in Python, not TypeScript
+- State read vs. action separation: Existing `state.mixer` reads all tracks; new `mixer.set_volume` mutates one
+- Fresh state queries: Never cache frequently-changing values (volume, pan) - always query before relative operations
 
 ### Critical Pitfalls
 
-1. **Uniform random humanization sounds worse than quantized** — Use Brownian random-walk model: each note's offset is the previous offset plus a Gaussian delta with a spring constant pulling back toward zero. Scale timing offsets relative to tempo and note density (tight for fast passages, loose for slow). Apply swing first, then Brownian humanization around the swung grid position, not the original grid.
+**Top 5 from PITFALLS.md:**
 
-2. **VST parameter index instability** — `plugins.getParamCount()` returns 4240 for every VST; most slots return blank names. Indices shift between plugin versions (Serum 2 v2.0.17 had a confirmed index-offset bug). Never hardcode indices — enumerate once, filter blanks, cache name-to-index map, invalidate on plugin change.
+1. **No API to place pattern clips on playlist timeline** - The `playlist` module has NO `addClip`, `placePattern`, or similar function. Accept this constraint: focus on playlist TRACK management (mute, solo, color, name) rather than clip placement. Guide users: "Drag Pattern 3 to track 2 at bar 8". Do NOT promise automated arrangement.
 
-3. **`getParamValue` unreliable for VSTs** — Known, acknowledged FL Studio bug. Maintain shadow state: every `setParamValue` call stores the value on the TypeScript side. Design all parameter operations as absolute values (not relative), since relative requires knowing current state. Test with Serum 2 specifically early — it may work even if broken for other VSTs.
+2. **Mixer routing requires explicit UI update** - After calling `mixer.setRouteTo()` to create routings, MUST call `mixer.afterRoutingChanged()` or the UI won't reflect changes. Always call once after ALL routing operations complete, not after each individual change.
 
-4. **No programmatic audio rendering exists** — FL Studio's Python API has no export/render function. `transport.globalTransport()` has 80+ commands but none for rendering. `ui` module keyboard simulation lacks modifier keys (no Ctrl+R). Accept the manual step — design the render workflow as guided UX with `chokidar` file watching to automate post-render steps.
+3. **Tempo is READ-ONLY** - `mixer.getCurrentTempo()` reads tempo but NO `setTempo()` function exists in any module. Design tempo tools as queries only. Guide users to change tempo manually. Do not promise programmatic tempo setting.
 
-5. **No programmatic sample loading into channels** — `channels` module has no `loadSample()` or `setSamplePath()`. Process all audio in Node.js via SoX, save to a known location, instruct user to drag into FL Studio. Do not attempt Edison scripting as a workaround — Edison runs in a completely separate isolated Python interpreter.
+4. **Index confusion: Mixer 0-indexed (0=Master), Playlist 1-indexed** - Mixer tracks: 0=Master, 1+=inserts. Playlist tracks: 1-indexed (track 1 is first). Validate all indices against `trackCount()`. Use `mixer.getTrackInfo(midi.TN_Master)` and `midi.TN_FirstIns` for clarity.
 
-6. **Double humanization accumulation** — Applying humanization multiple times stacks offsets, making patterns unrecognizably sloppy. Store original grid-quantized note data; implement "re-humanize" as reset-to-grid-then-apply, not apply-on-top-of-humanized.
+5. **Pickup mode confusion causes audible clicks** - `setTrackVolume(track, value, pickupMode)` parameter controls transition. Use `PIM_None` (0) for programmatic absolute changes when stopped. Wrong pickup mode causes audible pops during playback or delayed/ignored changes.
 
-7. **SysEx payload size for parameter discovery** — A full 4240-parameter response base64-encoded can exceed MIDI buffer limits. Return only non-empty parameter names (expected 300-500 for Serum 2). Implement chunking for responses exceeding 2KB before base64.
+**Other critical issues:**
+- Mixer effect slot plugin addressing differs from channel rack (must specify `slotIndex` 0-9 for mixer slots)
+- Mute/Solo has THREE states (1=force on, 0=force off, -1=toggle) not two
+- Volume is non-linear (0.8=unity/0dB, not 1.0)
+- Color format is BGR (0x--BBGGRR) not RGB
+- Playlist tracks are 1-indexed unlike everything else
+- No general marker API (only navigation + auto-time markers)
 
 ## Implications for Roadmap
 
-All three feature tracks (humanization, plugin control, audio/sample) are largely independent but should be ordered by validation risk and dependency. Start with the most certain and build toward the least certain. Humanization and plugin control can run in parallel if resources allow.
+Based on research, suggested 4-phase structure for v2.1:
 
-### Phase 1: Humanization Engine
+### Phase 1: Mixer Track Control (Core)
+**Rationale:** Mixer API is well-documented, existing `state.py` already reads mixer state successfully. Mutations are straightforward extensions. This is the lowest-risk, highest-value phase.
 
-**Rationale:** Zero new FL Studio API surface. Pure TypeScript transformation on existing `NoteData[]` objects. Can be built and tested without FL Studio running. Immediate value — improves all existing note generation tools the moment it ships. No bridge changes required.
+**Delivers:**
+- Individual mixer track control (volume, pan, mute, solo, arm)
+- Track naming and color organization
+- Foundation for mixing workflow
 
-**Delivers:** Brownian timing drift, Gaussian velocity variation, beat-position awareness, swing/groove engine, note length variation (legato/staccato), per-instrument profiles (drums/piano/bass/synths), named humanization presets (tight, loose, jazz, lo-fi), original-note-data preservation to prevent double-humanization, optional `humanize` param added to existing note tools
+**Addresses features:**
+- `set_mixer_volume` - Set track volume (0.0-1.0, document 0.8=unity)
+- `set_mixer_pan` - Set track pan (-1.0 to 1.0)
+- `mute_mixer_track` - Force mute/unmute/toggle
+- `solo_mixer_track` - Solo with mode options
+- `mixer_arm_track` - Toggle recording arm
+- `set_mixer_track_name` - Rename tracks
+- `set_mixer_track_color` - Color organization (convert RGB to BGR)
 
-**Addresses:** All table-stakes humanization features (timing offset, velocity variation, swing, note length, per-instrument profiles)
+**Avoids pitfalls:**
+- Pitfall #4: Index validation (0=Master, 1+=inserts)
+- Pitfall #5: Pickup mode handling (default PIM_None for programmatic changes)
+- Pitfall #15: Volume scale documentation (0.8=unity)
+- Pitfall #11: Explicit mute state (1/0/-1)
+- Pitfall #14: BGR color conversion
 
-**Avoids:** Uniform random humanization (#1), double humanization accumulation (#6), over-humanizing fast passages. Use Brownian walk, scale relative to tempo, store original note data alongside humanized output.
+**Research flag:** No additional research needed - mixer API is thoroughly documented in official stubs.
 
-**Research flag:** No further research needed. Algorithms are well-researched, `simplex-noise` stack choice is clear, FL Studio API is not involved.
+### Phase 2: Mixer Routing & Advanced Control
+**Rationale:** Build on Phase 1 foundation to enable professional mixing workflows with routing, sends, and EQ. Requires careful handling of `afterRoutingChanged()` to avoid UI glitches.
 
-### Phase 2: Generic Plugin Parameter Control
+**Delivers:**
+- Send busses and parallel processing
+- EQ band control per track
+- Stereo separation
+- Enable/disable effect slots
+- Plugin editor focus
 
-**Rationale:** Validates the `plugins` Python module before Serum 2 integration. Establishes the parameter discovery cache pattern that Serum 2 depends on. Must handle SysEx size limits and timeout issues before Serum 2's parameter count makes them critical. Early discovery of whether `getParamValue` is broken for Serum 2 — critical design information for Phase 3.
+**Addresses features:**
+- `set_mixer_routing` - Route track to destination via `setRouteTo()`
+- `set_mixer_send_level` - Set send amount via `setRouteToLevel()`
+- `set_mixer_eq_band` - Control EQ gain/freq/bandwidth per band
+- `set_mixer_stereo_sep` - Stereo width control
+- `mixer_enable_slots` - Bypass all effects on track
+- `mixer_focus_editor` - Open effect plugin window
 
-**Delivers:** New `fl-bridge/handlers/plugins.py` handler, `src/plugins/param-cache.ts` with name-to-index cache, per-command timeout configuration (discovery gets 30s, not 5s), SysEx chunking for responses exceeding 2KB, shadow state for plugin parameters, PME flag checking before all setParamValue calls, `plugin.discover` MCP tool
+**Avoids pitfalls:**
+- Pitfall #2: Call `afterRoutingChanged()` after batch routing operations
+- Pitfall #8: Mixer effect slots use `mixerTrack` + `slotIndex` (0-9), not channel index
+- Pitfall #12: Solo mode complexity with routing (test with submixes)
 
-**Addresses:** Parameter discovery, parameter get/set by name
+**Research flag:** Standard patterns, but test routing with complex projects to verify `afterRoutingChanged()` behavior.
 
-**Avoids:** VST parameter index instability (#2), `getParamValue` unreliability (#3), SysEx size limits (#7), timeout issues, PME flag violations. Cache parameter maps, use shadow state, check PME flags.
+### Phase 3: Playlist Track Management
+**Rationale:** Playlist track properties (mute, solo, name, color) follow similar patterns to mixer. Critically, this phase does NOT include clip placement (API does not support it).
 
-**Research flag:** Requires hands-on testing spike before full implementation. Key unknowns: (a) Does `getParamValue` work for Serum 2 in FL Studio 2025? (b) What is the maximum reliable SysEx payload size through loopMIDI on this system? (c) Does `setParamValue` work reliably during playback without PME violations?
+**Delivers:**
+- Playlist track organization
+- Arrangement view control (track mute/solo)
+- Track selection state management
 
-### Phase 3: Serum 2 Sound Design
+**Addresses features:**
+- `playlist_mute_track` - Mute/unmute playlist tracks
+- `playlist_solo_track` - Solo playlist tracks
+- `set_playlist_track_name` - Rename tracks
+- `set_playlist_track_color` - Color organization
+- `playlist_select_track` - Toggle selection
+- `get_playlist_tracks` - Query all track info
 
-**Rationale:** Depends entirely on Phase 2 (generic plugin control must work, parameter cache must exist). Requires a hands-on parameter discovery spike against a running Serum 2 instance before semantic aliases can be written — this is a research task, not just coding. High value — core to the v2.0 vision.
+**Avoids pitfalls:**
+- Pitfall #6: Playlist 1-indexed (start loops at 1, not 0)
+- Pitfall #1: NO clip placement API - do not promise or attempt
+- Pitfall #14: BGR color format (same as mixer)
 
-**Delivers:** `src/plugins/serum2.ts` semantic parameter mapping, sound type recipes (pad, bass, lead, pluck), Serum 2-specific MCP tools for oscillator/filter/macro/FX/preset control, fuzzy parameter name matching for resilience across Serum versions, preset navigation
+**Research flag:** Validate during implementation that playlist track iteration starts at 1 and `trackCount()` is exclusive upper bound.
 
-**Addresses:** Oscillator control, filter control, macro mapping, effects chain control, preset loading, sound type recipes
+### Phase 4: Project Settings & Markers
+**Rationale:** Project-level controls (tempo reading, marker navigation) are independent features with no dependencies on earlier phases. Defer to end since they're "nice to have" rather than core mixing workflow.
 
-**Avoids:** Serum 2 parameter complexity and naming inconsistency. Run discovery first, build alias table from actual runtime names (not UI label assumptions), start with top 50 most-used parameters rather than mapping all 300+, use fuzzy matching for name resilience.
+**Delivers:**
+- Tempo and timebase queries
+- Marker navigation for arrangement sections
+- Auto-time marker creation
 
-**Research flag:** Requires a discovery spike against Serum 2 in FL Studio to catalog actual parameter names before coding the semantic layer. Names returned by `getParamName()` may differ from Serum 2 UI labels ("Filter 1 Cutoff" in UI vs. "Fltr1_Freq" internally). Do not write hardcoded aliases until real names are confirmed.
+**Addresses features:**
+- `get_tempo` - Read current tempo (READ-ONLY, document limitation)
+- `get_project_info` - PPQ/timebase, project data
+- `jump_to_marker` - Navigate to named marker
+- `get_marker_name` - Query marker info
+- `add_auto_time_marker` - Add automatic time markers
 
-### Phase 4: Audio Rendering Workflow
+**Avoids pitfalls:**
+- Pitfall #3: Tempo is READ-ONLY, no setter exists
+- Pitfall #7: Limited marker API (navigation + auto-time markers only, no general add/delete)
+- Pitfall #13: Time signature not directly readable
 
-**Rationale:** No programmatic API exists for rendering — this is a confirmed hard limit verified against official API stubs. Phase 4 establishes the file-watching pattern and guided UX that Phase 5 depends on for source material. The manual step is acceptable when the surrounding workflow is seamless.
-
-**Delivers:** `chokidar`-based file watcher (`src/audio/file-watcher.ts`), guided render workflow tool (instructs user with exact steps, suggested filename, output path, watches for result), render guidance UX, optional investigation of `FL64.exe /R /Pn` CLI rendering as enhancement path
-
-**Addresses:** Pattern render to WAV, render with/without mixer FX
-
-**Avoids:** Assuming programmatic rendering is possible (#4). Accept the manual Ctrl+R step — optimize UX around it so post-render automation is seamless once the file appears.
-
-**Research flag:** Investigate `FL64.exe /R /Pn /Opath` CLI rendering. Test whether it conflicts with an already-running FL Studio instance. If it works non-conflictingly, it could eliminate the manual Ctrl+R step for single-pattern renders.
-
-### Phase 5: Sample Manipulation
-
-**Rationale:** Depends on Phase 4 (needs rendered WAV files as source material). SoX-based audio processing in Node.js is well-understood and carries low risk. The only unresolved piece is getting processed samples back into FL Studio — which requires user drag-and-drop per the API analysis. SoX must be present on system PATH.
-
-**Delivers:** SoX CLI wrapper (`src/audio/sox.ts`) for pitch-shift/time-stretch/reverse/chop/layer, `node-wav` WAV I/O (`src/audio/wav-io.ts`), sample cache for tracking processed files, full resampling workflow (generate notes -> render -> manipulate -> reload), stereo layering via detune, startup SoX availability check with installation instructions if missing
-
-**Addresses:** Pitch shift, detune, reverse, time stretch, layering, full resampling workflow
-
-**Avoids:** Edison scripting for sample manipulation (Edison is isolated, cannot be triggered programmatically), assuming `channels.loadSample()` exists (#5). All DSP in Node.js. Accept manual sample reload into FL Studio. Use SoX CLI subprocess, not JavaScript audio libraries designed for browsers.
-
-**Research flag:** Verify SoX is installed on user's system before implementing. Investigate `channels.setChannelPitch(idx, cents, mode=1)` reliability — mode 1 (cents offset) is expected to work but mode 2 (semitone range) is confirmed broken. Investigate `general.processRECEvent()` as a potential sample loading mechanism before accepting drag-and-drop as the only path.
+**Research flag:** LOW priority for additional research. Document limitations clearly.
 
 ### Phase Ordering Rationale
 
-- **Risk ordering:** Phases 1-5 progress from zero-risk (pure TypeScript, no FL Studio API) to highest-risk (unconfirmed API workarounds). Each phase validates assumptions for the next.
-- **Dependency chain:** Humanize modifies existing `NoteData[]` (no new FL API); plugin control introduces new FL Bridge handler; Serum 2 builds on plugin control's parameter cache; sample manipulation requires rendered audio from Phase 4; the full resampling workflow requires all phases.
-- **Parallel opportunity:** Phase 1 (humanization) and Phase 2 (plugin control) share no code and can be built concurrently. Phase 3 (Serum 2) begins after Phase 2's discovery spike confirms parameter reading works.
-- **Pitfall prevention by sequencing:** Doing generic plugin control before Serum 2 means the team discovers whether `getParamValue` is broken and whether SysEx chunking is needed before building the Serum 2 semantic layer on top of potentially broken infrastructure.
+- **Start with mixer control** because it's the highest-value, lowest-risk feature set with comprehensive API support
+- **Add routing/EQ second** to complete professional mixing capabilities while patterns are fresh
+- **Playlist tracks third** since they follow similar patterns but have less urgency
+- **Project settings last** as they're independent query features, not core workflow
+
+This order:
+- Delivers core value (mixing) fastest
+- Groups related functionality (mixer phases 1-2, then playlist)
+- Defers lowest-impact features (project queries)
+- Surfaces API limitations early (no clip placement becomes obvious in Phase 3 research)
+- Allows testing integration with existing v2.0 plugin control features
 
 ### Research Flags
 
-Phases needing hands-on investigation spikes before full implementation:
+**Phases needing deeper research during planning:**
+- **Phase 2 (Routing):** Complex routing scenarios with submixes need hands-on testing to verify `afterRoutingChanged()` behavior and solo mode interactions
+- **Phase 3 (Playlist):** Must validate 1-indexed iteration and confirm NO clip placement API before committing to feature scope
 
-- **Phase 2 (Generic Plugin Control):** Test `getParamValue` reliability for Serum 2 in FL Studio 2025. Benchmark maximum SysEx payload size through loopMIDI. Confirm `setParamValue` during playback without PME violations.
-- **Phase 3 (Serum 2):** Run parameter discovery against a live Serum 2 instance and catalog actual parameter names before writing semantic aliases.
-- **Phase 4 (Audio Rendering):** Test `FL64.exe /R /Pn /Opath` CLI rendering behavior when FL Studio is already running.
-
-Phases with well-documented patterns (proceed directly without research-phase):
-
-- **Phase 1 (Humanization):** Algorithms are well-researched, `simplex-noise` is chosen, no FL Studio API involved.
-- **Phase 5 (Sample Manipulation):** SoX is mature and thoroughly documented. Node.js audio processing patterns are standard. Implement directly once Phase 4 file watching is in place.
+**Phases with standard patterns (skip research-phase):**
+- **Phase 1 (Mixer Core):** Well-documented, follows existing state.py patterns, straightforward mutations
+- **Phase 4 (Project):** Simple read-only queries, marker navigation is documented
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | npm packages are verified and purposefully minimal. SoX is a 30-year mature tool. Only caveat: `node-wav` is 9 years old but WAV format is stable. |
-| Features | MEDIUM | Table stakes features are well-researched from multiple production guides. Serum 2 parameter names are LOW confidence until runtime discovery. Audio rendering scope depends on which workarounds prove viable. |
-| Architecture | MEDIUM-HIGH | FL Studio API limitations are verified from official documentation stubs (not just community reports). Component boundaries and data flows are clear. Open questions: FL Studio CLI rendering behavior, `processRECEvent` for sample loading. |
-| Pitfalls | HIGH | Critical pitfalls are sourced from official API docs (confirmed API gaps), acknowledged FL Studio bugs (forum + developer statements), and established music production practice. These risks are real and the mitigations are sound. |
+| Stack | HIGH | No new dependencies needed; FL Studio Python API provides all functions via built-in modules |
+| Features | HIGH | Mixer and playlist track control fully supported; clip placement and tempo setting confirmed NOT available |
+| Architecture | HIGH | Extends proven v1.0/v2.0 bridge patterns; handler registration and SysEx codec already validated |
+| Pitfalls | HIGH | Index confusion, pickup modes, routing UI updates, and API gaps all documented in official stubs with clear examples |
 
-**Overall confidence:** MEDIUM-HIGH
+**Overall confidence:** HIGH
+
+All research based on official FL Studio Python API stubs (authoritative source). The API limitations (no clip placement, no tempo setting) are definitively confirmed by absence in comprehensive API documentation, not speculation. Architecture patterns are proven in existing codebase.
 
 ### Gaps to Address
 
-- **Serum 2 actual parameter names:** Must be discovered via live `plugins.getParamName()` enumeration. Cannot be resolved through documentation — only by running Serum 2 in FL Studio. Do not write alias table until this spike is complete.
-- **`getParamValue` bug scope for Serum 2:** Known to be broken for "some VSTs" but unknown for Serum 2 specifically in FL Studio 2025. Test early in Phase 2 to determine if shadow state is required or optional.
-- **SysEx payload size limit in practice:** Must be benchmarked empirically on this system (loopMIDI + Windows MIDI API + RtMidi + FL Studio receive buffer all impose different limits). Benchmark before committing to a chunking strategy.
-- **FL Studio CLI rendering with live instance:** `FL64.exe /R` is documented for batch rendering but its behavior when FL Studio is already running is unknown. This could unlock automated rendering if it works non-conflictingly.
-- **`general.processRECEvent()` for sample loading:** Unexplored. Worth a short investigation during Phase 5 planning before accepting user drag-and-drop as the only sample reload mechanism.
+**During implementation:**
+- **Solo mode behavior with complex routing** - Document which tracks play when soloing a submix or send bus. Test with real projects to verify mode parameters.
+- **Time signature reading** - Investigate `general.getRecPPQ()` relationship to time signature or accept as "not readable" and default to 4/4 assumption.
+- **Routing order dependencies** - Verify if `setRouteTo()` must be called before `setRouteToLevel()` or if they're independent (likely must create route first).
+- **Mixer track volume dB conversion** - Consider adding utility to convert between linear (0.0-1.0) and dB values for better UX.
+- **Large project response sizes** - Implement pagination for `get_mixer_tracks` when user has many tracks (existing chunked SysEx pattern applies).
+
+**During user testing:**
+- Natural language interpretation of "track 1" (user means first insert, FL index is 1, but must clarify Master is 0)
+- Volume percentage interpretation ("50%" = 0.5 which is well below unity 0.8)
+- Color specification (accept RGB in tools, convert to BGR internally)
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [FL Studio Python API Stubs — Official](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/) — Verified absence of render/export API, confirmed plugins module functions, confirmed no sample loading in channels module
-- [FL Studio Plugins Module](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/plugins/) — Full parameter enumeration and control function signatures with parameter count details (4096 VST + 128 MIDI CC + 16 aftertouch = 4240 total)
-- [FL Studio Channels Module](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/channels/) — Confirmed no `loadSample` or `setSamplePath`
-- [FL Studio Transport Module](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/transport/) — Confirmed no render command in `globalTransport` constants
-- [FL Studio General Module](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/general/) — Confirmed no export function
-- [FL Studio UI Keyboard Module](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/ui/keyboard/) — Confirmed no modifier key simulation
-- [FL Studio PME Flags](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/midi/pme%20flags/) — Operation safety flag documentation
-- [FL Studio Edison Scripting API](https://il-group.github.io/FL-Studio-API-Stubs/edison_scripting/) — Confirmed isolated interpreter, no file I/O, cannot be triggered from MIDI scripts
-- [simplex-noise npm](https://www.npmjs.com/package/simplex-noise) — v4.0.3, TypeScript-native, zero deps
-- [chokidar npm](https://www.npmjs.com/package/chokidar) — v4.x, cross-platform file watching
-- [SoX Documentation](https://sox.sourceforge.net/sox.html) — v14.4.2+, all needed audio operations verified
-- [Serum 2 Official Product Page](https://xferrecords.com/products/serum-2) — Feature architecture reference (3 oscillators, 5 synthesis modes, 8 macros, effects list)
+- [FL Studio Python API - Mixer Module](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/mixer/) - Complete mixer function reference
+- [FL Studio Python API - Mixer Tracks](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/mixer/tracks/) - Volume, pan, mute, solo, routing functions with parameter specs
+- [FL Studio Python API - Playlist Tracks](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/playlist/tracks/) - Playlist track management (confirms no clip placement API)
+- [FL Studio Python API - Arrangement Markers](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/arrangement/markers/) - Marker navigation and auto-time markers
+- [FL Studio Python API - General Module](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/general/) - Project info and undo functions
+- [FL Studio Python API - Transport Module](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/transport/) - Confirms no tempo setting function
+- Existing codebase: `fl-bridge/handlers/state.py`, `fl-bridge/handlers/transport.py`, `fl-bridge/protocol/commands.py` - Proven architecture patterns
 
 ### Secondary (MEDIUM confidence)
-- [FL Studio Forum: getParamValue bug acknowledged](https://forum.image-line.com/viewtopic.php?t=272593) — Long-standing broken VST read confirmed by community and developer acknowledgment
-- [FL Studio Forum: VST3 parameter ID instability](https://forum.image-line.com/viewtopic.php?t=299601) — Index shift behavior confirmed
-- [Serum 2 Changelog (community)](https://gist.github.com/0xdevalias/a537a59d1389d5aed3bc63b544c70c8d) — v2.0.17 parameter index bug fix confirmed
-- [fl_param_checker](https://github.com/MaddyGuthridge/fl_param_checker) — Runtime parameter discovery utility for development/debugging
-- [HumBeat 2 Drum Humanizer](https://developdevice.com/products/humbeat-2-0-the-ultimate-midi-drum-humanizer) — Gaussian distribution approach, per-instrument timing ranges, performance artifact modeling reference
-- [MIDI Humanizer (brownian noise)](https://github.com/vincerubinetti/midi-humanizer) — Brownian random-walk implementation reference
-- [Serum 2 Manual](https://images.equipboard.com/uploads/item/manual/127411/xfer-records-serum-2-advanced-wavetable-synthesizer-manual.pdf) — Parameter category reference
-- Production technique guides for humanization timing ranges, velocity curves, swing formulas — cross-referenced across multiple sources
+- [FL MIDI 101 Guide](https://flmidi-101.readthedocs.io/en/latest/scripting/fl_midi_api.html) - Community documentation of API patterns
+- [GitHub: flstudio-volume-converter](https://github.com/olyrhc/flstudio-volume-converter) - Volume dB conversion reference (confirms 0.8=unity)
+- v2.0 ARCHITECTURE.md - Established bridge handler patterns, SysEx codec, command registration
+- v2.0 PITFALLS.md - Known SysEx size limits, plugin index confusion patterns
 
-### Tertiary (LOW confidence — needs validation)
-- Serum 2 exact parameter names as reported by `plugins.getParamName()` — guesses based on UI labels only; must be confirmed by runtime discovery
-- FL Studio CLI rendering with live instance (`FL64.exe /R`) — documented but untested behavior when FL Studio is already running
-- `general.processRECEvent()` for sample loading — speculation; no community confirmation found
+### Tertiary (LOW confidence, needs validation)
+- Time signature inference from PPQ and marker position math
+- `general.processRECEvent()` potential workarounds for tempo/automation (not documented, speculative)
+- Exact solo mode behavior with multi-level routing (needs hands-on testing)
 
 ---
-*Research completed: 2026-02-23*
+*Research completed: 2026-02-25*
 *Ready for roadmap: yes*

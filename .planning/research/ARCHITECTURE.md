@@ -59,641 +59,545 @@ The v2.0 Production Pipeline adds four major capability areas to the existing FL
 
 ---
 
-## Integration Architecture: Four New Capabilities
+## v2.1 Architecture: Mixer, Playlist & Project Controls
 
-### Capability 1: Humanization Engine
+**Researched:** 2026-02-25
+**Confidence:** HIGH for mixer/playlist track control, MEDIUM for project settings, LOW for pattern placement
 
-**Architecture Decision: Node.js (TypeScript), NOT FL Studio (Python)**
-
-| Factor | Node.js (Recommended) | FL Studio (Python) |
-|--------|------------------------|--------------------|
-| Where it runs | Before notes are sent | After notes are placed |
-| Complexity | Full TypeScript math libraries | FL Studio's stripped Python 3.9 |
-| Access to note data | Direct -- notes are NoteData objects | Would need to read back from piano roll |
-| Musical context | Has scale/key/chord context from generation | Lost once notes are placed |
-| Debugging | Standard Node.js debugging | print() in FL Studio script output only |
-| Dependencies | None -- pure math on existing data | Would require reading notes back (fragile) |
-| Latency | Zero additional latency | Additional SysEx round-trip |
-
-**Rationale:** Humanization is fundamentally a transformation on note data (timing, velocity, duration). The note data already exists as TypeScript `NoteData[]` objects in the MCP server before being written to the .pyscript. Humanization should be applied at this stage, as a processing pipeline step between generation and serialization.
-
-**Integration point:** Insert between music engine output and pyscript writer.
+### System Overview
 
 ```
-Music Engine ──> NoteData[] ──> Humanization Engine ──> NoteData[] ──> Pyscript Writer
-                                     ^
-                                     |
-                              HumanizationConfig
-                              {
-                                timingVariance: number,    // beats of jitter
-                                velocityCurve: string,     // 'linear'|'exponential'|'breathing'
-                                swingAmount: number,       // 0-1
-                                swingGrid: number,         // swing subdivision
-                                articulationMode: string,  // 'legato'|'staccato'|'mixed'
-                                driftAmount: number,       // gradual timing drift
-                                accentPattern: number[],   // beat accents
-                              }
+                              v2.1 ARCHITECTURE
+     +----------------------------------------------------------------------+
+     |                        MCP Tool Layer                                 |
+     |  +---------+  +----------+  +----------+  +---------+               |
+     |  | mixer/  |  | playlist/|  | project/ |  |existing |               |
+     |  | *.ts    |  | *.ts     |  | *.ts     |  | tools   |               |
+     |  +----+----+  +----+-----+  +----+-----+  +----+----+               |
+     |       |            |             |             |                     |
+     +-------+------------+-------------+-------------+---------------------+
+     |                     ConnectionManager (bridge/)                       |
+     |                executeCommand(action, params) -> Promise<FLResponse>  |
+     +----------------------------------------------------------------------+
+     |                      SysEx Codec + MIDI Client                        |
+     |                     loopMIDI bidirectional port                       |
+     +----------------------------------------------------------------------+
+                                    |
+                                    | SysEx
+                                    v
+     +----------------------------------------------------------------------+
+     |                        FL Bridge (Python)                             |
+     |                     device_FLBridge.py                                |
+     +----------------------------------------------------------------------+
+     |  +-----------+  +------------+  +-----------+  +------------------+ |
+     |  | mixer.py  |  | playlist.py|  | project.py|  | existing handlers| |
+     |  | (NEW)     |  | (NEW)      |  | (NEW)     |  | transport,state, | |
+     |  |           |  |            |  |           |  | patterns,plugins | |
+     |  +-----+-----+  +-----+------+  +-----+-----+  +--------+---------+ |
+     |        |              |               |                  |           |
+     +--------+--------------+---------------+------------------+-----------+
+     |                        FL Studio Python API                           |
+     |  import mixer    import playlist    import general    import ui      |
+     +----------------------------------------------------------------------+
+                                    |
+                                    v
+     +----------------------------------------------------------------------+
+     |                        FL Studio 2025                                 |
+     |    +---------+    +----------+    +----------+                       |
+     |    |  Mixer  |    | Playlist |    | Project  |                       |
+     |    | Tracks  |    | Tracks   |    | Settings |                       |
+     |    +---------+    +----------+    +----------+                       |
+     +----------------------------------------------------------------------+
 ```
 
-**New components:**
-
-| Component | Location | Type |
-|-----------|----------|------|
-| `src/music/humanize.ts` | New file | Core humanization algorithms |
-| `src/music/humanize-types.ts` | New file | HumanizationConfig types |
-| `src/tools/humanize.ts` | New file | MCP tool definitions for humanization |
-
-**Modified components:**
-
-| Component | Change |
-|-----------|--------|
-| `src/tools/notes.ts` | Add optional `humanize` parameter to all note tools |
-| `src/music/pyscript-writer.ts` | No change -- receives already-humanized NoteData |
-
-**Data flow (humanized note creation):**
-```
-1. Claude: "Create a chord progression and humanize it"
-2. MCP Server: Generate chords via music engine
-3. MCP Server: Apply humanization to NoteData[]
-4. MCP Server: Write humanized notes to .pyscript
-5. SysEx: Send pianoroll.addNotes to FL Bridge
-6. FL Bridge: Opens piano roll
-7. User: Triggers ComposeWithBridge
-```
-
-**Humanization as standalone tool (post-hoc):**
-```
-1. Claude: "Humanize the last notes I created"
-2. MCP Server: Retrieve cached NoteData[] from last generation
-3. MCP Server: Apply humanization
-4. MCP Server: Overwrite .pyscript with humanized version
-5. User: Re-trigger ComposeWithBridge
-```
-
-**NOTE:** This means the MCP server needs to cache the last generated NoteData[]. This is a new state requirement.
-
----
-
-### Capability 2: Plugin Parameter Control (Generic + Serum 2)
-
-**Architecture Decision: New FL Bridge handler + Node.js parameter resolution layer**
-
-#### FL Studio `plugins` Module API (HIGH confidence -- official API stubs)
-
-The `plugins` module provides these key functions:
-
-| Function | Signature | Purpose |
-|----------|-----------|---------|
-| `isValid` | `(index, slotIndex=-1, useGlobalIndex=False) -> bool` | Check if plugin exists |
-| `getPluginName` | `(index, slotIndex=-1, userName=False, useGlobalIndex=False) -> str` | Get plugin name |
-| `getParamCount` | `(index, slotIndex=-1, useGlobalIndex=False) -> int` | Total parameter count |
-| `getParamName` | `(paramIndex, index, slotIndex=-1, useGlobalIndex=False) -> str` | Parameter name by index |
-| `getParamValue` | `(paramIndex, index, slotIndex=-1, useGlobalIndex=False) -> float` | Get value (0.0-1.0) |
-| `setParamValue` | `(value, paramIndex, index, slotIndex=-1, pickupMode=0, useGlobalIndex=False) -> None` | Set value |
-| `getParamValueString` | `(paramIndex, index, slotIndex=-1, pickupMode=0, useGlobalIndex=False) -> str` | Human-readable value |
-| `getPresetCount` | `(index, slotIndex=-1, useGlobalIndex=False) -> int` | Number of presets |
-| `nextPreset` | `(index, slotIndex=-1, useGlobalIndex=False) -> None` | Next preset |
-| `prevPreset` | `(index, slotIndex=-1, useGlobalIndex=False) -> None` | Previous preset |
-| `getName` | `(index, slotIndex=-1, flag=0, paramIndex=0, useGlobalIndex=False) -> str` | Various names by flag |
-
-**Plugin name flags (for `getName`):**
-
-| Flag Constant | Value | Returns |
-|---------------|-------|---------|
-| `FPN_Param` | 0 | Parameter name |
-| `FPN_ParamValue` | 1 | Text value of parameter |
-| `FPN_Semitone` | 2 | Note name defined by plugin |
-| `FPN_Patch` | 3 | Patch name |
-| `FPN_Preset` | 6 | Internal preset name |
-
-**Plugin addressing:**
-- **Generator plugins (channel rack):** `index` = channel index, `slotIndex` = -1
-- **Effect plugins (mixer):** `index` = mixer track index, `slotIndex` = 0-9 (mixer slot)
-
-#### VST Parameter Count (HIGH confidence -- official docs)
-
-VST plugins report **4240 parameters** to FL Studio:
-- 4096 plugin-defined parameters (indices 0-4095)
-- 128 MIDI CC parameters (indices 4096-4223)
-- 16 aftertouch parameters (indices 4224-4239)
-
-This means iterating all parameters to build a name map is feasible but expensive (4240 calls to `getParamName`). This should be done ONCE per plugin session and cached.
-
-#### Known Bug: `getParamValue` (MEDIUM confidence -- forum reports)
-
-Forum reports indicate that "getting and setting the values of some VST plugin parameters has been broken" for certain plugins. This was reported in 2023-2024 timeframe. The bug may or may not be fixed in FL Studio 2025. **This needs hands-on testing with Serum 2 specifically.**
-
-Workaround if `getParamValue` is broken:
-- Maintain a **shadow state** in the MCP server (TypeScript side)
-- When `setParamValue` is called, also store the value in the shadow state
-- When reading values, return from shadow state
-- Caveat: Shadow state diverges if user manually changes parameters in FL Studio
-
-#### Serum 2 Parameter Architecture (LOW-MEDIUM confidence -- needs testing)
-
-Serum 2 as a VST plugin will expose its parameters via the standard VST parameter interface. Based on Serum 2's architecture, expected parameter categories include:
-
-| Category | Expected Parameters | Estimated Count |
-|----------|--------------------|-----------------|
-| Oscillator A | Wavetable position, level, pan, octave, semi, fine, phase, random, unison voices, detune, blend, stereo | ~30 |
-| Oscillator B | Same as Osc A | ~30 |
-| Sub oscillator | Shape, level, octave, direct out | ~10 |
-| Noise oscillator | Level, phase, pitch, direct out | ~10 |
-| Filter 1 | Type, cutoff, resonance, drive, fat, mix, pan, key track | ~15 |
-| Filter 2 | Same as Filter 1 | ~15 |
-| Envelopes (x4) | Attack, hold, decay, sustain, release, velocity | ~24 |
-| LFOs (x10) | Rate, shape, rise, delay, smooth, phase, BPM sync | ~70 |
-| FX rack | Distortion, flanger, phaser, chorus, delay, compressor, multiband, EQ, filter, reverb, hyper/dimension | ~80+ |
-| Macros (x4) | Value | 4 |
-| Global | Master volume, voicing, glide, etc. | ~20 |
-| **Total estimated** | | **~300-400 meaningful parameters** |
-
-The remaining ~3700 of the 4096 VST parameter slots may be unused/blank or map to less common controls.
-
-**Critical for Serum 2: Name-based parameter resolution**
-
-Parameter indices are positional and may change between Serum versions. The architecture MUST use name-based resolution:
-
-```
-User: "Set filter cutoff to 75%"
-  1. MCP Server: Resolve "filter cutoff" to parameter name
-  2. SysEx command: plugins.findParam("Filter 1 Cutoff")
-  3. FL Bridge: Iterate params to find matching name -> paramIndex
-  4. FL Bridge: plugins.setParamValue(0.75, paramIndex, channelIndex)
-```
-
-#### New Components for Plugin Control
-
-**FL Bridge side (Python):**
-
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| `fl-bridge/handlers/plugins.py` | New file | Plugin parameter handlers |
-
-**Handlers to register:**
-- `plugins.discover` -- Enumerate all plugin parameters (name + index + current value)
-- `plugins.getParam` -- Get parameter value by name or index
-- `plugins.setParam` -- Set parameter value by name or index
-- `plugins.findPlugin` -- Find plugin by name in channel rack or mixer
-- `plugins.getPresets` -- List available presets
-- `plugins.nextPreset` / `plugins.prevPreset` -- Navigate presets
-- `plugins.getInfo` -- Get plugin name, type, parameter count
-
-**MCP Server side (TypeScript):**
-
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| `src/tools/plugins.ts` | New file | MCP tool definitions for plugin control |
-| `src/plugins/param-cache.ts` | New file | Parameter name-to-index cache |
-| `src/plugins/serum2.ts` | New file | Serum 2 semantic parameter mapping |
-
-**Parameter discovery flow:**
-```
-1. Claude: "What plugins are loaded?"
-2. MCP Server sends plugins.findPlugin to FL Bridge
-3. FL Bridge: channels.channelCount() -> iterate -> plugins.isValid() -> plugins.getPluginName()
-4. Returns list of plugin names with channel indices
-
-5. Claude: "Show me Serum 2's parameters"
-6. MCP Server sends plugins.discover(channelIndex) to FL Bridge
-7. FL Bridge: plugins.getParamCount() -> iterate -> plugins.getParamName()
-8. Returns {paramIndex: paramName} map (cached in MCP server)
-```
-
-**SysEx payload size concern:** Discovering 4240 parameters will produce a large JSON response. The existing SysEx protocol may need chunking for this response. Consider:
-- Option A: Chunk the discovery into batches (0-500, 500-1000, etc.)
-- Option B: Only return non-empty parameter names (skip blank slots)
-- Option C: Filter to the first 500 parameters (covers most meaningful ones)
-
-**Recommendation: Option B** -- return only parameters with non-empty names. This likely reduces the response to 300-500 entries, which is manageable in a single SysEx message.
-
-#### Serum 2 Semantic Layer
-
-Beyond raw parameter control, the Serum 2 semantic layer provides musical abstractions:
-
-```typescript
-// src/plugins/serum2.ts
-
-// Semantic parameter groups for natural language mapping
-const SERUM2_PARAM_GROUPS = {
-  oscillator: {
-    a: { wavetablePos: 'Osc A WT Pos', level: 'Osc A Level', ... },
-    b: { wavetablePos: 'Osc B WT Pos', level: 'Osc B Level', ... },
-  },
-  filter: {
-    1: { cutoff: 'Filter 1 Cutoff', resonance: 'Filter 1 Res', ... },
-    2: { cutoff: 'Filter 2 Cutoff', resonance: 'Filter 2 Res', ... },
-  },
-  macro: { 1: 'Macro 1', 2: 'Macro 2', 3: 'Macro 3', 4: 'Macro 4' },
-  fx: { ... },
-};
-```
-
-**Important:** The exact parameter names must be discovered via hands-on testing with Serum 2 in FL Studio. The names above are educated guesses based on Serum 2's UI labels. The semantic layer maps natural language concepts ("filter cutoff", "oscillator wavetable position") to actual parameter names returned by `plugins.getParamName()`.
-
-**Wavetable loading:** Serum 2 stores wavetables as files. There is NO known API to load wavetables programmatically via FL Studio's `plugins` module. Wavetable selection would need to be done via parameter automation (if Serum exposes a wavetable select parameter) or left as a manual user step.
-
----
-
-### Capability 3: Audio Rendering
-
-**Architecture Decision: UI automation workaround -- NO direct API exists**
-
-#### What the FL Studio API Supports (HIGH confidence -- verified)
-
-The FL Studio MIDI Controller Scripting API has **NO export/render function**. Verified by checking:
-- `general` module: Contains `getVersion`, `getRecPPQ`, `safeToEdit`, `processRECEvent`, `dumpScoreLog`, `clearLog` -- NO export function
-- `transport` module: Contains play/stop/record, `globalTransport()`, position control -- NO render function
-- `ui` module: Contains keyboard shortcuts (`cut`, `copy`, `paste`, `up`, `down`, `enter`, `escape`) and window management -- NO export menu trigger
-- `transport.globalTransport()`: Offers 80+ command IDs (FPT_ constants) including `FPT_Save` (92) and `FPT_SaveNew` (93) but NO render/export command
-
-**The export dialog is a GUI-only operation in FL Studio.**
-
-#### Rendering Options Analysis
-
-| Option | Feasibility | Reliability | User Experience |
-|--------|-------------|-------------|-----------------|
-| A. `globalTransport(FPT_Save)` + manual export | Works but only saves project | HIGH | Poor -- still manual |
-| B. Keyboard shortcut simulation (Ctrl+R) | Not possible via Python API | N/A | N/A |
-| C. Windows automation (pyautogui/ahk) | Works outside FL Studio | LOW | Brittle, breaks with UI changes |
-| D. Manual user step with guidance | Always works | HIGH | Acceptable with good UX |
-| E. FL Studio batch export via CLI | FL Studio supports `/R` flag | MEDIUM | Only for full project, not patterns |
-
-**Recommendation: Option D with enhancement path to E**
-
-**Option D (Primary -- Phase 1):** Guide the user to render manually.
-```
-MCP Tool: "render_pattern"
-1. MCP Server prepares render instructions
-2. Returns: "To render this pattern:
-   1. File > Export > Wave File (Ctrl+R)
-   2. Select 'Pattern' mode
-   3. Choose output location
-   4. Click Start"
-3. MCP Server watches a configured output directory for new .wav files
-4. When file appears, loads it for sample manipulation
-```
-
-**Option E (Enhancement -- Later):** FL Studio command-line rendering.
-FL Studio supports `FL64.exe /R /Pn /Opath project.flp` for command-line rendering:
-- `/R` -- render mode
-- `/Pn` -- render pattern n
-- `/Opath` -- output path
-- Requires saving the project first
-
-This could be triggered from Node.js:
-```typescript
-import { execSync } from 'child_process';
-execSync('"C:/Program Files/Image-Line/FL Studio/FL64.exe" /R /P1 /O"output.wav" "project.flp"');
-```
-**Caveat:** This launches a separate FL Studio instance, which is heavyweight and may conflict with the running instance. Needs testing.
-
-#### File Watcher Pattern
-
-For both rendering options, the MCP server needs to detect new audio files:
-
-```typescript
-// src/audio/file-watcher.ts
-import { watch } from 'fs';
-
-const RENDER_DIR = join(homedir(), 'Documents', 'FL Studio Renders');
-
-function watchForRender(expectedFilename: string, timeout: number): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const watcher = watch(RENDER_DIR, (event, filename) => {
-      if (filename === expectedFilename) {
-        watcher.close();
-        resolve(join(RENDER_DIR, filename));
-      }
-    });
-    setTimeout(() => { watcher.close(); reject(new Error('Render timeout')); }, timeout);
-  });
-}
-```
-
----
-
-### Capability 4: Sample Manipulation
-
-**Architecture Decision: Node.js audio processing + FL Studio for loading**
-
-#### Where Each Operation Runs
-
-| Operation | Where | Why |
-|-----------|-------|-----|
-| Pitch shifting | Node.js | Full audio processing libraries available |
-| Time stretching | Node.js | Same |
-| Reversing | Node.js | Trivial buffer reversal |
-| Chopping/slicing | Node.js | Needs precise sample math |
-| Layering | Node.js | Combine multiple audio buffers |
-| Detuning | Node.js | Pitch shift variant |
-| Loading into FL Studio | FL Bridge | Need to load sample into channel |
-| Normalizing | Node.js | Sample-level math |
-
-#### FL Studio Sample Loading Limitation (HIGH confidence)
-
-The `channels` module does **NOT** have a function to load a sample file into a channel. Verified functions:
-- `getChannelName/setChannelName` -- name only
-- `getChannelVolume/setChannelVolume` -- volume
-- `getChannelPan/setChannelPan` -- pan
-- `getChannelType` -- read-only type
-- `getTargetFxTrack/setTargetFxTrack` -- mixer routing
-- NO `loadSample`, `setSamplePath`, or file loading function
-
-**Workaround options for loading samples:**
-
-| Option | How | Reliability |
-|--------|-----|-------------|
-| A. Drag-and-drop guidance | Tell user to drag file into channel rack | HIGH but manual |
-| B. `channels.showEditor` + clipboard | Open channel settings, paste sample path | LOW -- clipboard is text, not file |
-| C. `processRECEvent` | Use REC events to trigger sample loading | UNKNOWN -- needs testing |
-| D. Browser navigation | Use `ui` module to navigate FL Studio's browser to the file | MEDIUM -- fragile UI automation |
-
-**Recommendation: Option A initially, with Option D as an enhancement.**
-
-Option D approach using FL Studio browser:
-```python
-# FL Bridge
-import ui
-# Navigate FL Studio's browser to the file
-# ui.navigateBrowserMenu(path) -- if such a function exists
-# This needs hands-on testing
-```
-
-**Alternative: Direct file placement**
-
-Since FL Studio monitors certain folders, an alternative workflow:
-1. Node.js processes the sample and saves it to a known location
-2. The file appears in FL Studio's browser automatically
-3. MCP tool instructs the user: "Drag 'processed_sample.wav' from the browser into a new channel"
-
-This is the most reliable approach given API limitations.
-
-#### Edison Scripting API (MEDIUM confidence)
-
-Edison (FL Studio's audio editor) has a separate Python scripting API that CAN manipulate audio:
-
-| Function | Purpose |
-|----------|---------|
-| `EditorSample.GetSampleAt(pos, ch) -> float` | Read sample data |
-| `EditorSample.SetSampleAt(pos, ch, val)` | Write sample data |
-| `EditorSample.AmpFromTo(start, end, vol)` | Amplify |
-| `EditorSample.SilenceFromTo(start, end, vol)` | Silence a region |
-| `EditorSample.NormalizeFromTo(start, end, vol, only_if_above)` | Normalize |
-| `EditorSample.SineFromTo(start, end, freq, phase, vol)` | Generate sine wave |
-| `EditorSample.LoadFromClipboard()` | Load from clipboard |
-| `EditorSample.Length` | Sample length |
-| `EditorSample.NumChans` | Channel count |
-| `EditorSample.SampleRate` | Sample rate |
-
-**However:** Edison scripts run in a separate Python subinterpreter, just like piano roll scripts. They must be triggered manually by the user (Tools > Run script in Edison). They cannot be invoked from the MIDI Controller Script. And they have NO file I/O -- no loading or saving audio files directly.
-
-**Verdict:** Edison scripting is not useful for our sample manipulation pipeline. Node.js is the correct place for audio processing.
-
-#### Node.js Audio Processing Stack
-
-| Library | Purpose | Status |
-|---------|---------|--------|
-| `wavefile` | Read/write WAV files | Stable, well-maintained |
-| `soundtouch-js` | Pitch shifting, time stretching | Port of SoundTouch library |
-| `audiobuffer-to-wav` | Convert AudioBuffer to WAV | Utility |
-| `web-audio-api` | Node.js implementation of Web Audio API | For effects processing |
-| Raw buffer manipulation | Reverse, chop, layer | No library needed |
-
-**Recommended approach:** Use `wavefile` for I/O and raw buffer manipulation for most operations. Use `soundtouch-js` only for pitch shifting/time stretching where proper algorithm quality matters.
-
-#### New Components for Sample Manipulation
-
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| `src/audio/wav-io.ts` | New file | Read/write WAV files |
-| `src/audio/effects.ts` | New file | Pitch shift, reverse, chop, layer |
-| `src/audio/sample-cache.ts` | New file | Track processed samples |
-| `src/tools/samples.ts` | New file | MCP tool definitions |
-
-**Sample manipulation data flow:**
-```
-1. Claude: "Render that chord, pitch it down an octave, and reverse it"
-2. MCP Server: Check sample-cache for last render
-   - If no render: Guide user to render, watch for file
-   - If render exists: Load WAV from disk
-3. MCP Server: Apply pitch shift (-12 semitones) via soundtouch-js
-4. MCP Server: Reverse buffer
-5. MCP Server: Write processed WAV to known output directory
-6. MCP Server: Return instructions to load into FL Studio
-   "Processed sample saved to: ~/Documents/FL Studio MCP/Samples/chord_pitched_reversed.wav
-    Drag this file into a new channel in FL Studio."
-```
-
----
-
-## Complete v2.0 Architecture Diagram
-
-```
-+------------------+     MCP/JSON-RPC      +------------------------------------------+
-|                  |        (stdio)         |            MCP Server (Node.js)           |
-|   Claude Code    | <------------------> |                                          |
-|   (MCP Client)   |                      |  src/tools/                              |
-|                  |                      |    transport.ts     (existing)            |
-+------------------+                      |    patterns.ts      (existing)            |
-                                          |    state.ts         (existing)            |
-                                          |    notes.ts         (existing, modified)  |
-                                          |    plugins.ts       (NEW)                 |
-                                          |    humanize.ts      (NEW)                 |
-                                          |    samples.ts       (NEW)                 |
-                                          |    render.ts        (NEW)                 |
-                                          |                                          |
-                                          |  src/music/                              |
-                                          |    theory.ts        (existing)            |
-                                          |    chords.ts        (existing)            |
-                                          |    melody.ts        (existing)            |
-                                          |    scales.ts        (existing)            |
-                                          |    humanize.ts      (NEW)                 |
-                                          |    pyscript-writer.ts (existing)          |
-                                          |                                          |
-                                          |  src/plugins/                            |
-                                          |    param-cache.ts   (NEW)                 |
-                                          |    serum2.ts        (NEW)                 |
-                                          |                                          |
-                                          |  src/audio/                              |
-                                          |    wav-io.ts        (NEW)                 |
-                                          |    effects.ts       (NEW)                 |
-                                          |    sample-cache.ts  (NEW)                 |
-                                          |    file-watcher.ts  (NEW)                 |
-                                          |                                          |
-                                          +-------|-----|-----|----------------------+
-                                                  |     |     |
-                                      SysEx/MIDI  |     |     | File System
-                                      (loopMIDI)  |     |     | (read/write WAV,
-                                                  |     |     |  .pyscript)
-                                                  v     |     v
-                                          +-------------+ +------------------+
-                                          | FL Studio   | | Local filesystem |
-                                          | + FL Bridge | | ~/Documents/     |
-                                          | (Python)    | |  FL Studio MCP/  |
-                                          |             | |  Samples/        |
-                                          | handlers/   | +------------------+
-                                          |  transport  |
-                                          |  state      |
-                                          |  patterns   |
-                                          |  pianoroll  |
-                                          |  plugins.py | (NEW)
-                                          +-------------+
-```
-
-## New vs Modified Components Summary
-
-### New Files (11 files)
-
-| File | Purpose | Depends On |
-|------|---------|------------|
-| `src/music/humanize.ts` | Humanization algorithms | NoteData types |
-| `src/music/humanize-types.ts` | Humanization config types | None |
-| `src/tools/humanize.ts` | MCP humanization tools | humanize.ts, connection |
-| `src/tools/plugins.ts` | MCP plugin control tools | param-cache, connection |
-| `src/plugins/param-cache.ts` | Parameter name-to-index cache | None |
-| `src/plugins/serum2.ts` | Serum 2 semantic parameter map | param-cache |
-| `src/audio/wav-io.ts` | WAV file read/write | wavefile library |
-| `src/audio/effects.ts` | Audio processing (pitch, reverse, chop) | wav-io |
-| `src/audio/sample-cache.ts` | Track processed samples | None |
-| `src/audio/file-watcher.ts` | Watch for rendered files | None |
-| `src/tools/samples.ts` | MCP sample manipulation tools | audio/, connection |
-| `fl-bridge/handlers/plugins.py` | FL Bridge plugin parameter handlers | plugins module |
-
-### Modified Files (3 files)
-
-| File | Change |
-|------|--------|
-| `src/tools/notes.ts` | Add optional humanization parameter to all note tools |
+### New Python Handlers (fl-bridge/handlers/)
+
+| Handler | Responsibility | FL Studio Module |
+|---------|----------------|------------------|
+| `mixer.py` (NEW) | Mixer track control: volume, pan, mute, solo, routing, EQ | `mixer` |
+| `playlist.py` (NEW) | Playlist track management, pattern placement | `playlist` |
+| `project.py` (NEW) | Tempo, time signature, markers, metronome | `general`, `transport`, `arrangement` |
+
+### New TypeScript Tools (src/tools/)
+
+| Module | Responsibility | Depends On |
+|--------|----------------|------------|
+| `mixer.ts` (NEW) | MCP tools for mixer control | `ConnectionManager` |
+| `playlist.ts` (NEW) | MCP tools for arrangement | `ConnectionManager` |
+| `project.ts` (NEW) | MCP tools for project settings | `ConnectionManager` |
+
+### Modified Files
+
+| File | Modification |
+|------|--------------|
+| `fl-bridge/handlers/__init__.py` | Import new handlers: mixer, playlist, project |
+| `fl-bridge/device_FLBridge.py` | Import new handlers in OnInit() |
 | `src/tools/index.ts` | Register new tool modules |
-| `fl-bridge/handlers/__init__.py` | Import plugins handler |
-| `fl-bridge/device_FLBridge.py` | Import `plugins` module at top level |
 
-## Suggested Build Order
+---
 
-Build order is driven by three factors: (1) dependency chain, (2) validation risk, and (3) immediate user value.
+## Recommended Project Structure
 
-### Phase 1: Humanization Engine
+```
+fl-bridge/
++-- handlers/
+|   +-- __init__.py        # Add imports: mixer, playlist, project
+|   +-- transport.py       # (existing)
+|   +-- state.py           # (existing) - has basic mixer/playlist read
+|   +-- patterns.py        # (existing)
+|   +-- pianoroll.py       # (existing)
+|   +-- plugins.py         # (existing)
+|   +-- mixer.py           # NEW: mixer track control handlers
+|   +-- playlist.py        # NEW: playlist/arrangement handlers
+|   +-- project.py         # NEW: project-level settings handlers
++-- device_FLBridge.py     # Add handler imports in OnInit()
 
-**Why first:**
-- Zero dependency on unvalidated FL Studio APIs
-- Immediate value -- improves ALL existing note generation tools
-- Pure TypeScript -- no bridge changes needed
-- Can be tested entirely in Node.js without FL Studio running
+src/tools/
++-- index.ts               # Register new tool modules
++-- transport.ts           # (existing)
++-- state.ts               # (existing)
++-- patterns.ts            # (existing)
++-- notes.ts               # (existing)
++-- humanize.ts            # (existing)
++-- plugins.ts             # (existing)
++-- serum.ts               # (existing)
++-- render.ts              # (existing)
++-- sample.ts              # (existing)
++-- mixer.ts               # NEW: mixer control tools
++-- playlist.ts            # NEW: arrangement tools
++-- project.ts             # NEW: project settings tools
+```
 
-**Components:** `humanize.ts`, `humanize-types.ts`, `src/tools/humanize.ts`
-**Modified:** `src/tools/notes.ts`
+### Structure Rationale
 
-### Phase 2: Generic Plugin Parameter Control
+- **One handler per domain:** Keeps handlers focused and testable
+- **Matches existing pattern:** New handlers follow exact same structure as transport.py, plugins.py
+- **FL module alignment:** Each handler maps to 1-2 FL Studio API modules for clarity
 
-**Why second:**
-- Validates the `plugins` Python module works (critical unknown)
-- Discovers if `getParamValue` bug exists in FL Studio 2025
-- Foundation for Serum 2 integration
-- Establishes the parameter cache pattern
-- Requires FL Bridge changes (new handler)
+---
 
-**Components:** `fl-bridge/handlers/plugins.py`, `src/tools/plugins.ts`, `src/plugins/param-cache.ts`
-**Risk:** If `getParamValue` is broken, need shadow state fallback
+## Architectural Patterns
 
-### Phase 3: Serum 2 Sound Design
+### Pattern 1: Handler Registration (Follow Existing)
 
-**Why third:**
-- Depends on Phase 2 (generic plugin control must work)
-- Requires hands-on parameter discovery (exact names from running Serum 2)
-- High value -- core to v2.0 vision
+**What:** Each handler module registers its functions with the command router on import
+**When to use:** Always for FL Bridge handlers
+**Trade-offs:** Simple, but requires explicit import in `__init__.py`
 
-**Components:** `src/plugins/serum2.ts`
-**Risk:** Parameter names may differ from assumptions; needs iterative discovery
+**Example (existing pattern to follow):**
+```python
+# fl-bridge/handlers/mixer.py
+from protocol.commands import register_handler
 
-### Phase 4: Audio Rendering
+def handle_mixer_set_volume(params):
+    index = params.get('index', 0)
+    volume = params.get('volume', 0.8)
+    mixer.setTrackVolume(index, volume)
+    return {
+        'success': True,
+        'index': index,
+        'volume': mixer.getTrackVolume(index)
+    }
 
-**Why fourth:**
-- No API exists -- requires establishing the "manual render + file watcher" pattern
-- Less critical than humanization and sound design
-- Needed before sample manipulation (provides source material)
+register_handler('mixer.set_volume', handle_mixer_set_volume)
+```
 
-**Components:** `src/audio/file-watcher.ts`, render guidance tool
-**Risk:** Low -- the manual approach always works
+### Pattern 2: MCP Tool Thin Wrapper (Follow Existing)
 
-### Phase 5: Sample Manipulation
+**What:** TypeScript tools are thin wrappers that delegate to FL Bridge
+**When to use:** For operations that need FL Studio API
+**Trade-offs:** Simple, but adds round-trip latency
 
-**Why fifth:**
-- Depends on Phase 4 (needs rendered audio to manipulate)
-- Node.js audio processing is well-understood
-- Loading into FL Studio requires workaround
+**Example (existing pattern to follow):**
+```typescript
+// src/tools/mixer.ts
+server.tool(
+  'mixer_set_volume',
+  'Set a mixer track volume (0.0-1.0)',
+  {
+    track: z.number().int().min(0).describe('Mixer track index (0=Master)'),
+    volume: z.number().min(0).max(1).describe('Volume level (0.0-1.0)')
+  },
+  async ({ track, volume }) => {
+    const result = await connection.executeCommand('mixer.set_volume', { index: track, volume });
+    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+  }
+);
+```
 
-**Components:** `src/audio/wav-io.ts`, `src/audio/effects.ts`, `src/audio/sample-cache.ts`, `src/tools/samples.ts`
-**Risk:** Audio library compatibility; FL Studio sample loading workaround
+### Pattern 3: State Read vs Action Separation
 
-## Anti-Patterns to Avoid
+**What:** Separate handlers for reading state (state.*) vs taking action (mixer.*, playlist.*)
+**When to use:** Distinguishes query from mutation
+**Trade-offs:** More handlers, but clearer intent
 
-### Anti-Pattern 1: Humanizing Inside FL Studio
+**Example:**
+- `state.mixer` (existing): Returns all track info (read-only)
+- `mixer.set_volume` (new): Mutates a specific track (action)
 
-**What:** Running humanization algorithms in FL Bridge Python
-**Why bad:** FL Studio's Python is stripped-down (no numpy, no random module availability uncertain), debugging is print-only, and you would need to read notes back from the piano roll (additional complexity and fragility)
-**Instead:** Humanize in Node.js before notes are serialized to .pyscript
+### Pattern 4: Validation in Handler, Not Bridge
 
-### Anti-Pattern 2: Full Parameter Scan on Every Request
+**What:** Validate parameters inside Python handlers, not TypeScript
+**When to use:** Always
+**Trade-offs:** Catches invalid params closer to API, better error messages
 
-**What:** Iterating all 4240 parameters every time a plugin command is issued
-**Why bad:** 4240 calls to `getParamName` is slow and generates massive SysEx traffic
-**Instead:** Scan once, cache the name-to-index map, invalidate only when plugin changes
+```python
+def handle_mixer_set_volume(params):
+    index = params.get('index')
+    if index is None:
+        return {'success': False, 'error': 'Missing required parameter: index'}
+    if index < 0 or index >= mixer.trackCount():
+        return {'success': False, 'error': f'Track index {index} out of range'}
+    # ... proceed
+```
 
-### Anti-Pattern 3: Attempting Programmatic Audio Rendering
+---
 
-**What:** Spending effort trying to find a way to trigger FL Studio's export dialog programmatically
-**Why bad:** It does not exist in the API. `globalTransport` has no render command. UI keyboard functions are limited to basic keys (no Ctrl+R combination). Time spent here is wasted.
-**Instead:** Accept the manual render step. Optimize the workflow around it (file watcher, good instructions, predictable output paths).
+## Data Flow
 
-### Anti-Pattern 4: Using Edison for Sample Processing
+### Mixer Volume Change Flow
 
-**What:** Trying to use Edison's Python scripting API for audio manipulation
-**Why bad:** Edison scripts have the same limitations as piano roll scripts -- separate subinterpreter, no file I/O, must be triggered manually. Plus, Edison must be open with the correct audio loaded.
-**Instead:** Process audio entirely in Node.js where you have full file system access and proper audio libraries.
+```
+User: "Set track 2 volume to 80%"
+         |
+         v
++---------------------+
+| MCP tool invocation |  mixer_set_volume({ track: 2, volume: 0.8 })
++----------+----------+
+           |
+           v
++---------------------+
+|  mixer.ts           |  await connection.executeCommand('mixer.set_volume', ...)
++----------+----------+
+           |
+           v
++---------------------+
+|  MidiClient         |  Encode JSON -> SysEx -> loopMIDI port
++----------+----------+
+           | SysEx over MIDI
+           v
++---------------------+
+|  device_FLBridge.py |  OnSysEx() -> parse -> execute_command()
++----------+----------+
+           |
+           v
++---------------------+
+|  mixer.py handler   |  mixer.setTrackVolume(2, 0.8)
++----------+----------+
+           |
+           v
++---------------------+
+|  FL Studio Mixer    |  Track 2 fader moves to 80%
++----------+----------+
+           | response
+           v
+   {'success': True, 'index': 2, 'volume': 0.8}
+```
 
-### Anti-Pattern 5: Hardcoding Serum 2 Parameter Indices
+### Playlist Pattern Placement Flow
 
-**What:** Using numeric indices (e.g., paramIndex 47 = filter cutoff) in code
-**Why bad:** Parameter indices are positional and can change between Serum versions, plugin updates, or even FL Studio versions
-**Instead:** Always resolve by name. Cache the name-to-index map. Log warnings if expected names are not found.
+```
+User: "Place Pattern 1 at bar 5 on track 2"
+         |
+         v
++-------------------------+
+| playlist_place_pattern  |  playlist_place_pattern({ pattern: 1, track: 2, bar: 5 })
++----------+--------------+
+           |
+           v
++-------------------------+
+|  playlist.py handler    |  ui.setFocused(6)  # Focus playlist
+|                         |  ... (investigate API for clip placement)
++----------+--------------+
+           |
+           v
+   NOTE: FL Studio API may not support programmatic clip placement!
+   Research needed during implementation.
+```
 
-## Open Questions Requiring Hands-On Testing
+---
 
-1. **Does `plugins.getParamValue()` work with Serum 2 in FL Studio 2025?** -- Forum reports say it was broken for some VSTs. Must test.
+## Integration Points with Existing Components
 
-2. **What are Serum 2's exact parameter names as reported by `plugins.getParamName()`?** -- The names may differ from Serum's UI labels. Must iterate and catalog.
+### Existing Handler: state.py
 
-3. **How many non-blank parameters does Serum 2 actually expose?** -- Out of 4096 slots, how many have meaningful names?
+`state.py` already has `handle_get_mixer()` that reads mixer track state. The new `mixer.py` will handle **mutations** (set volume, mute, solo, etc.). No conflict.
 
-4. **Can `plugins.setParamValue()` reliably change Serum 2 parameters?** -- Setting values is more critical than reading them.
+| state.py (existing) | mixer.py (new) |
+|---------------------|----------------|
+| `state.mixer` - read all tracks | `mixer.set_volume` - set one track's volume |
+| Returns: { tracks: [...], tempo } | `mixer.mute_track` - toggle mute |
+| Read-only | `mixer.solo_track` - toggle solo |
+|  | `mixer.set_pan` - set pan |
+|  | `mixer.set_routing` - route to destination |
 
-5. **Does FL Studio's command-line `/R` flag work when FL Studio is already running?** -- If so, this enables automated rendering without a second instance.
+### Existing Handler: transport.py
 
-6. **What is the maximum SysEx message size the bridge can handle reliably?** -- Parameter discovery responses may be large. Need to test with real payloads.
+`transport.py` handles play/stop/record. The new `project.py` will handle **tempo** and **time signature**. Tempo is currently read via `mixer.getCurrentTempo()` in `state.py`, but setting tempo uses `transport` module.
 
-7. **Can `general.processRECEvent()` be used to load samples into channels?** -- REC events control automatable values; sample loading may have a REC event ID.
+| transport.py (existing) | project.py (new) |
+|-------------------------|------------------|
+| `transport.start/stop/record` | `project.set_tempo` |
+| `transport.state` | `project.get_tempo` |
+|  | `project.set_time_signature` |
+|  | `project.set_marker` |
+
+### Handler Registration Order
+
+`device_FLBridge.py` OnInit() currently imports:
+```python
+from handlers import transport, state, patterns, pianoroll
+from handlers import plugins
+```
+
+Add new handlers:
+```python
+from handlers import transport, state, patterns, pianoroll
+from handlers import plugins
+from handlers import mixer, playlist, project  # NEW
+```
+
+---
+
+## FL Studio API Mapping
+
+### Mixer Module Functions (to implement)
+
+| MCP Tool | FL API Function | Notes |
+|----------|-----------------|-------|
+| `mixer_set_volume` | `mixer.setTrackVolume(index, volume)` | volume 0.0-1.0, default 0.8 |
+| `mixer_set_pan` | `mixer.setTrackPan(index, pan)` | pan -1.0 to 1.0 |
+| `mixer_mute_track` | `mixer.muteTrack(index, value)` | value -1 toggles |
+| `mixer_solo_track` | `mixer.soloTrack(index, value, mode)` | mode for solo behavior |
+| `mixer_arm_track` | `mixer.armTrack(index)` | toggles armed state |
+| `mixer_set_name` | `mixer.setTrackName(index, name)` | rename track |
+| `mixer_set_color` | `mixer.setTrackColor(index, color)` | 0x--BBGGRR format |
+| `mixer_set_routing` | `mixer.setRouteTo(index, dest, value)` | route track to destination |
+| `mixer_set_send_level` | `mixer.setRouteToLevel(index, dest, level)` | API v36+ |
+| `mixer_set_eq_band` | `mixer.setEqGain/Freq/Bandwidth(...)` | per-band EQ control |
+
+### Playlist Module Functions (to implement)
+
+| MCP Tool | FL API Function | Notes |
+|----------|-----------------|-------|
+| `playlist_mute_track` | `playlist.muteTrack(index)` | 1-indexed tracks! |
+| `playlist_solo_track` | `playlist.soloTrack(index)` | 1-indexed |
+| `playlist_set_name` | `playlist.setTrackName(index, name)` | |
+| `playlist_set_color` | `playlist.setTrackColor(index, color)` | |
+| `playlist_select_track` | `playlist.selectTrack(index)` | |
+
+**WARNING:** Pattern placement on playlist may not have programmatic API. Need to investigate:
+- `arrangement` module for timeline/marker control
+- May require UI automation via `ui` module (less reliable)
+
+### General/Transport Module Functions (to implement)
+
+| MCP Tool | FL API Function | Notes |
+|----------|-----------------|-------|
+| `project_set_tempo` | `transport.setTempo(tempo)` or REC event | Need to verify API |
+| `project_get_tempo` | `mixer.getCurrentTempo()` | Already used in state.py |
+| `project_get_ppq` | `general.getRecPPQ()` | Ticks per quarter note |
+
+**WARNING:** Time signature setting may not have API. Need to investigate.
+
+---
+
+## New Components Detail
+
+### mixer.py Handler (fl-bridge/handlers/mixer.py)
+
+```python
+"""
+FL Bridge Mixer Handlers
+
+Handles mixer track control: volume, pan, mute, solo, routing, EQ.
+
+REGISTERED HANDLERS:
+====================
+- mixer.set_volume: Set mixer track volume
+- mixer.set_pan: Set mixer track pan
+- mixer.mute_track: Mute/unmute mixer track
+- mixer.solo_track: Solo/unsolo mixer track
+- mixer.arm_track: Arm/disarm track for recording
+- mixer.set_name: Rename mixer track
+- mixer.set_color: Set mixer track color
+- mixer.set_routing: Route track to destination
+- mixer.set_send_level: Set send level to destination
+- mixer.get_peaks: Get current audio peak levels
+"""
+
+# Estimated: ~200 lines
+# Pattern: Same as transport.py, plugins.py
+```
+
+### playlist.py Handler (fl-bridge/handlers/playlist.py)
+
+```python
+"""
+FL Bridge Playlist Handlers
+
+Handles playlist track management and arrangement.
+
+REGISTERED HANDLERS:
+====================
+- playlist.mute_track: Mute/unmute playlist track
+- playlist.solo_track: Solo/unsolo playlist track
+- playlist.set_name: Rename playlist track
+- playlist.set_color: Set playlist track color
+- playlist.select_track: Select playlist track
+- playlist.get_activity: Get track activity level
+"""
+
+# Estimated: ~150 lines
+# NOTE: Pattern placement may require separate investigation
+```
+
+### project.py Handler (fl-bridge/handlers/project.py)
+
+```python
+"""
+FL Bridge Project Handlers
+
+Handles project-level settings: tempo, time signature, markers.
+
+REGISTERED HANDLERS:
+====================
+- project.set_tempo: Set project tempo (BPM)
+- project.get_info: Get project info (tempo, PPQ, etc.)
+- project.set_marker: Add/modify timeline marker
+"""
+
+# Estimated: ~100 lines
+# NOTE: Time signature API access unconfirmed
+```
+
+---
+
+## Build Order / Phase Recommendations
+
+Based on dependency analysis and risk:
+
+### Phase 1: Mixer Control (Low Risk)
+
+**Rationale:** Mixer API is well-documented, existing `state.py` already reads mixer state. Mutations are straightforward.
+
+1. Create `mixer.py` handler
+2. Create `mixer.ts` tools
+3. Register in `__init__.py` and `index.ts`
+
+**Commands to implement:**
+- `mixer.set_volume` / `mixer_set_volume`
+- `mixer.set_pan` / `mixer_set_pan`
+- `mixer.mute_track` / `mixer_mute_track`
+- `mixer.solo_track` / `mixer_solo_track`
+- `mixer.arm_track` / `mixer_arm_track`
+- `mixer.set_name` / `mixer_set_name`
+
+### Phase 2: Mixer Routing & EQ (Medium Risk)
+
+**Rationale:** Routing API (v36+) may not be available in all FL versions. EQ bands are numerous.
+
+1. Add routing handlers to `mixer.py`
+2. Add EQ handlers to `mixer.py`
+
+**Commands to implement:**
+- `mixer.set_routing` / `mixer_set_routing`
+- `mixer.set_send_level` / `mixer_set_send_level`
+- `mixer.set_eq_gain` / `mixer_set_eq_gain`
+
+### Phase 3: Project Settings (Medium Risk)
+
+**Rationale:** Tempo is confirmed, but time signature API needs investigation.
+
+1. Create `project.py` handler
+2. Create `project.ts` tools
+
+**Commands to implement:**
+- `project.set_tempo` / `project_set_tempo`
+- `project.get_info` / `project_get_info`
+
+### Phase 4: Playlist Track Control (Low Risk)
+
+**Rationale:** Playlist track properties are straightforward, similar to mixer tracks.
+
+1. Create `playlist.py` handler
+2. Create `playlist.ts` tools
+
+**Commands to implement:**
+- `playlist.mute_track` / `playlist_mute_track`
+- `playlist.solo_track` / `playlist_solo_track`
+- `playlist.set_name` / `playlist_set_name`
+
+### Phase 5: Playlist Pattern Placement (HIGH RISK)
+
+**Rationale:** FL Studio API may not support programmatic pattern/clip placement. Requires investigation.
+
+**Risk mitigation:**
+- Research `arrangement` module thoroughly
+- Consider UI automation as fallback
+- May need to defer to future milestone
+
+---
+
+## Anti-Patterns
+
+### Anti-Pattern 1: Mixing Read and Write in One Handler
+
+**What people do:** Single handler that both reads state and writes changes
+**Why it's wrong:** Makes it unclear whether operation is idempotent
+**Do this instead:** Separate `state.*` handlers (read) from `mixer.*` handlers (write)
+
+### Anti-Pattern 2: Assuming All API Functions Exist
+
+**What people do:** Design tools assuming FL Studio API has all needed functions
+**Why it's wrong:** Some operations (like placing clips) may not be possible
+**Do this instead:** Verify each function exists in API stubs before designing tool
+
+### Anti-Pattern 3: Ignoring Index Boundaries
+
+**What people do:** Pass track indices without validation
+**Why it's wrong:** Mixer is 0-indexed, playlist is 1-indexed; out-of-range crashes
+**Do this instead:** Validate indices in handler using `trackCount()` functions
+
+### Anti-Pattern 4: Hardcoding Color Values
+
+**What people do:** Pass color as hex string or RGB tuple
+**Why it's wrong:** FL Studio uses 0x--BBGGRR format (BGR, not RGB)
+**Do this instead:** Document format clearly, consider helper function
+
+---
+
+## Risk Assessment
+
+| Component | Risk | Mitigation |
+|-----------|------|------------|
+| Mixer volume/pan/mute | LOW | API well-documented, existing read works |
+| Mixer routing | MEDIUM | API v36+, may need version check |
+| Mixer EQ | LOW | API documented, just many parameters |
+| Project tempo | LOW | API exists, verify correct function |
+| Project time signature | HIGH | API may not exist, research needed |
+| Playlist track properties | LOW | Similar to mixer, 1-indexed |
+| Playlist pattern placement | HIGH | API may not exist, major blocker |
+
+---
 
 ## Sources
 
 ### HIGH Confidence
-- [FL Studio Python API Stubs -- Official](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/) -- Module documentation
-- [FL Studio Plugins Module](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/plugins/) -- Parameter functions
-- [FL Studio Channels Module](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/channels/) -- No sample loading API
-- [FL Studio Transport Module](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/transport/) -- No render function
-- [FL Studio globalTransport Commands](https://github.com/IL-Group/FL-Studio-API-Stubs) -- FPT_ constants (no render ID)
-- [FL Studio UI Keyboard Functions](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/ui/) -- Limited keyboard simulation
-- [Edison Scripting API](https://il-group.github.io/FL-Studio-API-Stubs/edison_scripting/) -- Separate subinterpreter, no file I/O
-- [FL Studio MIDI Scripting Manual](https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/midi_scripting.htm)
+- [FL Studio API Stubs (Official)](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/)
+- [Mixer Tracks API](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/mixer/tracks/)
+- [Playlist Tracks API](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/playlist/tracks/)
+- Existing codebase: `fl-bridge/handlers/state.py`, `fl-bridge/handlers/transport.py`
 
 ### MEDIUM Confidence
-- [FL Studio Forum: API Bug Reports](https://forum.image-line.com/viewtopic.php?t=272593) -- getParamValue issues confirmed
-- [Serum 2 Official Site](https://xferrecords.com/products/serum-2) -- Feature overview
-- [Flapi Project](https://github.com/MaddyGuthridge/Flapi) -- Validates MIDI bridge approach, unmaintained
-- [FL Studio Export Documentation](https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/fformats_save_export.htm) -- GUI-only export
+- [FL MIDI 101 Guide](https://flmidi-101.readthedocs.io/en/latest/scripting/fl_midi_api.html)
+- [Time Units Documentation](https://il-group.github.io/FL-Studio-API-Stubs/midi_controller_scripting/tutorials/time_units/)
 
 ### LOW Confidence
-- Serum 2 exact parameter names and count (needs hands-on testing)
-- FL Studio CLI rendering with running instance (needs testing)
-- `processRECEvent` for sample loading (needs investigation)
-- SysEx message size limits for large payloads (needs benchmarking)
+- Pattern placement API existence (needs investigation)
+- Time signature API existence (needs investigation)
+
+---
+*Architecture research for: FL Studio MCP v2.1 -- Song Building & Mixing*
+*Researched: 2026-02-25*
+*Confidence: HIGH for mixer/playlist track control, MEDIUM for project settings, LOW for pattern placement*
