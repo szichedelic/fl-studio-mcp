@@ -21,3 +21,4 @@ from handlers import transport
 from handlers import state
 from handlers import patterns
 from handlers import pianoroll
+from handlers import mixer
