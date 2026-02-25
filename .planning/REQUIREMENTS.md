@@ -44,8 +44,8 @@ Requirements for milestone v2.0 Production Pipeline. Each maps to roadmap phases
 
 ### Audio Rendering
 
-- [ ] **REN-01**: User can render patterns to WAV via guided workflow with clear step-by-step instructions
-- [ ] **REN-02**: System automatically detects rendered WAV files and tracks them for downstream processing
+- [x] **REN-01**: User can render patterns to WAV via guided workflow with clear step-by-step instructions
+- [x] **REN-02**: System automatically detects rendered WAV files and tracks them for downstream processing
 
 ### Sample Manipulation
 
@@ -111,8 +111,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SER-02 | Phase 5 | Complete |
 | SER-03 | Phase 5 | Complete |
 | SER-04 | Phase 5 | Complete |
-| REN-01 | Phase 6 | Pending |
-| REN-02 | Phase 6 | Pending |
+| REN-01 | Phase 6 | Complete |
+| REN-02 | Phase 6 | Complete |
 | SAM-01 | Phase 7 | Pending |
 | SAM-02 | Phase 7 | Pending |
 | SAM-03 | Phase 7 | Pending |
