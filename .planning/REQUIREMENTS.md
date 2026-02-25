@@ -47,8 +47,8 @@ Explicitly excluded. Documented to prevent scope creep.
 
 | Feature | Reason |
 |---------|--------|
-| Playlist clip/pattern placement | No FL Studio API exists — must be done manually |
-| Time signature setting | No API — user must change via F10 > Project Settings |
+| Playlist clip/pattern placement | No FL Studio API exists - must be done manually |
+| Time signature setting | No API - user must change via F10 > Project Settings |
 | Time signature reading | Only available in piano roll scripts, not MIDI controller scripts |
 | Load effects into mixer slots | API can control existing plugins but not add new ones |
 | Mixing/mastering presets | This milestone focuses on primitives, not opinionated presets |
@@ -67,41 +67,41 @@ Deferred to future releases. Tracked but not in current roadmap.
 
 ## Traceability
 
-Which phases cover which requirements. Updated during roadmap creation.
+Which phases cover which requirements.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MIX-01 | TBD | Pending |
-| MIX-02 | TBD | Pending |
-| MIX-03 | TBD | Pending |
-| MIX-04 | TBD | Pending |
-| MIX-05 | TBD | Pending |
-| MIX-06 | TBD | Pending |
-| MIX-07 | TBD | Pending |
-| MIX-08 | TBD | Pending |
-| MIX-09 | TBD | Pending |
-| MIX-10 | TBD | Pending |
-| MIX-11 | TBD | Pending |
-| PLAY-01 | TBD | Pending |
-| PLAY-02 | TBD | Pending |
-| PLAY-03 | TBD | Pending |
-| PLAY-04 | TBD | Pending |
-| PLAY-05 | TBD | Pending |
-| PLAY-06 | TBD | Pending |
-| PLAY-07 | TBD | Pending |
-| PLAY-08 | TBD | Pending |
-| PROJ-01 | TBD | Pending |
-| PROJ-02 | TBD | Pending |
-| PROJ-03 | TBD | Pending |
-| PROJ-04 | TBD | Pending |
-| PROJ-05 | TBD | Pending |
-| PROJ-06 | TBD | Pending |
+| MIX-01 | Phase 8 | Pending |
+| MIX-02 | Phase 8 | Pending |
+| MIX-03 | Phase 8 | Pending |
+| MIX-04 | Phase 8 | Pending |
+| MIX-05 | Phase 8 | Pending |
+| MIX-06 | Phase 8 | Pending |
+| MIX-07 | Phase 9 | Pending |
+| MIX-08 | Phase 9 | Pending |
+| MIX-09 | Phase 9 | Pending |
+| MIX-10 | Phase 9 | Pending |
+| MIX-11 | Phase 9 | Pending |
+| PLAY-01 | Phase 10 | Pending |
+| PLAY-02 | Phase 10 | Pending |
+| PLAY-03 | Phase 10 | Pending |
+| PLAY-04 | Phase 10 | Pending |
+| PLAY-05 | Phase 10 | Pending |
+| PLAY-06 | Phase 10 | Pending |
+| PLAY-07 | Phase 10 | Pending |
+| PLAY-08 | Phase 10 | Pending |
+| PROJ-01 | Phase 11 | Pending |
+| PROJ-02 | Phase 11 | Pending |
+| PROJ-03 | Phase 11 | Pending |
+| PROJ-04 | Phase 11 | Pending |
+| PROJ-05 | Phase 11 | Pending |
+| PROJ-06 | Phase 11 | Pending |
 
 **Coverage:**
 - v2.1 requirements: 25 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 25
+- Mapped to phases: 25
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-25*
-*Last updated: 2026-02-25 after research phase*
+*Last updated: 2026-02-25 after roadmap creation*
