@@ -93,9 +93,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 10-01: Playlist track management (get info, mute, solo, name, color)
-- [ ] 10-02: Markers (add, list, navigate)
-- [ ] 10-03: Live clip triggering (performance mode)
+- [ ] 10-01-PLAN.md - Playlist track management (get info, mute, solo, name, color)
+- [ ] 10-02-PLAN.md - Markers (add, list, navigate)
+- [ ] 10-03-PLAN.md - Live clip triggering (performance mode)
 
 ### Phase 11: Project Controls
 **Goal**: Users can control project-level settings like tempo and playback position
@@ -129,9 +129,9 @@ Phases execute in numeric order: 8 -> 9 -> 10 -> 11
 | 7. Sample Manipulation | v2.0 | 3/3 | Complete | 2026-02-25 |
 | 8. Mixer Core | v2.1 | 2/2 | Complete | 2026-02-25 |
 | 9. Mixer Routing & Advanced | v2.1 | 2/2 | Complete | 2026-02-25 |
-| 10. Playlist & Markers | v2.1 | 0/3 | Not started | - |
+| 10. Playlist & Markers | v2.1 | 0/3 | Planned | - |
 | 11. Project Controls | v2.1 | 0/2 | Not started | - |
 
 ---
 *Roadmap updated: 2026-02-25*
-*Milestone: v2.1 Song Building & Mixing (Phase 9 complete)*
+*Milestone: v2.1 Song Building & Mixing (Phase 10 planned)*
