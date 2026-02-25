@@ -110,8 +110,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 11-01: Tempo and position (get/set tempo, get/set position)
-- [ ] 11-02: Undo/redo operations
+- [ ] 11-01-PLAN.md - Tempo and position (get/set tempo, get/set position)
+- [ ] 11-02-PLAN.md - Undo/redo operations
 
 ## Progress
 
