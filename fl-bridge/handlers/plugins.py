@@ -306,10 +306,8 @@ def handle_plugin_next_preset(params: Dict[str, Any]) -> Dict[str, Any]:
             }
 
         plugins.nextPreset(index, slot_index)
-        preset_name = plugins.getName(index, slot_index, 6, 0)  # 6 = FPN_Preset
         return {
             'success': True,
-            'presetName': preset_name,
             'channelIndex': index,
             'slotIndex': slot_index
         }
@@ -352,10 +350,8 @@ def handle_plugin_prev_preset(params: Dict[str, Any]) -> Dict[str, Any]:
             }
 
         plugins.prevPreset(index, slot_index)
-        preset_name = plugins.getName(index, slot_index, 6, 0)  # 6 = FPN_Preset
         return {
             'success': True,
-            'presetName': preset_name,
             'channelIndex': index,
             'slotIndex': slot_index
         }

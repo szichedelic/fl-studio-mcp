@@ -385,14 +385,7 @@ export function registerSerumTools(
           };
         }
 
-        const data = result as unknown as PresetNavData;
-        const presetName = data.presetName ?? 'Unknown';
-        const lines = [`Navigated to next preset: ${presetName}`];
-        if (data.presetIndex !== undefined) {
-          lines.push(`Preset index: ${data.presetIndex}`);
-        }
-
-        return { content: [{ type: 'text' as const, text: lines.join('\n') }] };
+        return { content: [{ type: 'text' as const, text: 'Navigated to next preset.' }] };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         return {
@@ -428,14 +421,7 @@ export function registerSerumTools(
           };
         }
 
-        const data = result as unknown as PresetNavData;
-        const presetName = data.presetName ?? 'Unknown';
-        const lines = [`Navigated to previous preset: ${presetName}`];
-        if (data.presetIndex !== undefined) {
-          lines.push(`Preset index: ${data.presetIndex}`);
-        }
-
-        return { content: [{ type: 'text' as const, text: lines.join('\n') }] };
+        return { content: [{ type: 'text' as const, text: 'Navigated to previous preset.' }] };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         return {
