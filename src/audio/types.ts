@@ -27,3 +27,27 @@ export interface WatcherConfig {
   /** Milliseconds before watch times out (default 300000 = 5 min). */
   timeoutMs?: number;
 }
+
+/** Result of a SoX operation. */
+export interface SoxResult {
+  /** Absolute path to the output WAV file. */
+  outputPath: string;
+  /** The SoX command that was executed (for debugging/logging). */
+  command: string;
+}
+
+/** Metadata about a WAV audio file, retrieved via SoX --i. */
+export interface SampleInfo {
+  /** Absolute path to the file. */
+  path: string;
+  /** Sample rate in Hz (e.g., 44100). */
+  sampleRate: number;
+  /** Number of audio channels (1=mono, 2=stereo). */
+  channels: number;
+  /** Duration in seconds. */
+  duration: number;
+  /** Total number of samples. */
+  samples: number;
+  /** Bit depth as string (e.g., "16-bit", "24-bit"). */
+  precision: string;
+}
