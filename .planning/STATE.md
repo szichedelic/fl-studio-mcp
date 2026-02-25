@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 ## Current Position
 
 Phase: 9 of 11 (Mixer Routing & Advanced)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-25 - Completed 09-01-PLAN.md
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-02-25 - Completed 09-02-PLAN.md
 
-Progress: [####################] 100% v2.0 | [████░░░░░░] 33% v2.1 (3/9 plans)
+Progress: [####################] 100% v2.0 | [█████░░░░░] 44% v2.1 (4/9 plans)
 
 ## Performance Metrics
 
@@ -27,7 +27,7 @@ Progress: [####################] 100% v2.0 | [████░░░░░░] 33
 | Phase | Plans | Status |
 |-------|-------|--------|
 | 8. Mixer Core | 2/2 | Complete |
-| 9. Mixer Routing | 1/2 | In progress |
+| 9. Mixer Routing | 2/2 | Complete |
 | 10. Playlist & Markers | 0/3 | Not started |
 | 11. Project Controls | 0/2 | Not started |
 
@@ -48,6 +48,9 @@ Recent decisions affecting v2.1 work:
 - Track resolution supports both index (int) and name (str) via _resolve_track_ref
 - Routes must exist before setting level (use set_route first)
 - EQ values returned in both normalized (0-1) and real units (dB, Hz)
+- Level normalization: 0dB = 0.8, using 10^(dB/50) * 0.8 formula for dB conversion
+- MCP tools accept level in normalized (0-1), percentage (0-100), OR decibels
+- Effect slot tools: track param = channelIndex for paramCache integration
 
 ### From v2.0
 
@@ -64,5 +67,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Completed 09-01-PLAN.md
+Stopped at: Completed 09-02-PLAN.md (Phase 9 complete)
 Resume file: None
