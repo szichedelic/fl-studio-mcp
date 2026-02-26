@@ -43,10 +43,12 @@ from typing import Dict, Any
 try:
     import mixer
     import midi
+    import channels
 except ImportError:
     # Running outside FL Studio
     mixer = None
     midi = None
+    channels = None
 
 # Import handler registration
 from protocol.commands import register_handler
@@ -852,6 +854,69 @@ def handle_mixer_set_eq_band(params: Dict[str, Any]) -> Dict[str, Any]:
         return {'success': False, 'error': str(e)}
 
 
+def handle_set_channel_target(params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Route a channel to a mixer track.
+
+    Args:
+        params: {
+            channel (int, required): Channel index (0-based)
+            mixer_track (int, required): Mixer track index (0=Master, 1+=inserts)
+        }
+
+    Returns:
+        dict: {
+            success: True,
+            channel: int,
+            mixer_track: int,
+            channel_name: str
+        }
+    """
+    try:
+        if channels is None:
+            return {'success': False, 'error': 'Channels module not available'}
+        if mixer is None:
+            return {'success': False, 'error': 'Mixer module not available'}
+
+        # Validate required params
+        if 'channel' not in params:
+            return {'success': False, 'error': 'Missing required parameter: channel'}
+        if 'mixer_track' not in params:
+            return {'success': False, 'error': 'Missing required parameter: mixer_track'}
+
+        channel_idx = int(params['channel'])
+        mixer_track = int(params['mixer_track'])
+
+        # Validate channel index
+        channel_count = channels.channelCount()
+        if channel_idx < 0 or channel_idx >= channel_count:
+            return {'success': False, 'error': f'Channel index {channel_idx} out of range (0 to {channel_count - 1})'}
+
+        # Validate mixer track index
+        error = _validate_track_index(mixer_track)
+        if error:
+            return {'success': False, 'error': error}
+
+        # Get channel name for response
+        channel_name = channels.getChannelName(channel_idx)
+
+        # Route channel to mixer track
+        channels.setTargetFxTrack(channel_idx, mixer_track)
+
+        # Readback to confirm
+        readback = channels.getTargetFxTrack(channel_idx)
+
+        return {
+            'success': True,
+            'channel': channel_idx,
+            'channel_name': channel_name,
+            'mixer_track': readback
+        }
+
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+
 # Register all mixer handlers
 register_handler('mixer.set_volume', handle_mixer_set_volume)
 register_handler('mixer.set_pan', handle_mixer_set_pan)
@@ -869,3 +934,6 @@ register_handler('mixer.set_route_level', handle_mixer_set_route_level)
 # EQ handlers (Phase 9)
 register_handler('mixer.get_eq', handle_mixer_get_eq)
 register_handler('mixer.set_eq_band', handle_mixer_set_eq_band)
+
+# Channel routing
+register_handler('mixer.set_channel_target', handle_set_channel_target)

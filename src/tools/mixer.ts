@@ -833,4 +833,45 @@ export function registerMixerTools(
       }
     },
   );
+
+  // ── set_channel_target ────────────────────────────────────────────────────
+
+  const setChannelTargetSchema = {
+    channel: z.number().int().min(0)
+      .describe('Channel index (0-based)'),
+    mixer_track: z.number().int().min(0)
+      .describe('Mixer track index (0=Master, 1+=insert tracks)'),
+  };
+
+  server.tool(
+    'set_channel_target',
+    'Route a channel to a mixer track. Use this to assign channels to mixer inserts for mixing.',
+    setChannelTargetSchema,
+    async ({ channel, mixer_track }) => {
+      try {
+        const result = await connection.executeCommand('mixer.set_channel_target', {
+          channel,
+          mixer_track,
+        });
+
+        if (!result.success) {
+          return {
+            content: [{ type: 'text', text: `Failed to route channel: ${JSON.stringify(result)}` }],
+            isError: true,
+          };
+        }
+
+        const r = result as unknown as { channel_name: string; channel: number; mixer_track: number };
+        return {
+          content: [{ type: 'text', text: `Routed "${r.channel_name}" (ch ${r.channel}) → Insert ${r.mixer_track}` }],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{ type: 'text', text: `Error routing channel: ${message}` }],
+          isError: true,
+        };
+      }
+    },
+  );
 }
