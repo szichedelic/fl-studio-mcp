@@ -18,6 +18,8 @@ export class MidiClient {
   private output: Output;
   private pendingRequests: Map<number, PendingRequest> = new Map();
   private chunkBuffers: Map<number, number[][]> = new Map();
+  // clientId range is 1..127. 0 is reserved as the bridge's
+  // "could not parse client id" sentinel, so we never assign it.
   private nextClientId = 1;
   private connected = false;
 
@@ -150,7 +152,12 @@ export class MidiClient {
     }
 
     const clientId = this.nextClientId;
-    this.nextClientId = (this.nextClientId + 1) & 0x7f; // Wrap at 127
+    // Cycle 1..127, skipping 0 (reserved as the bridge's parse-error sentinel).
+    this.nextClientId = (this.nextClientId % 127) + 1;
+
+    // Drop any stale chunk fragments left over from a previous request that
+    // happened to use this id (e.g. timed out mid-stream).
+    this.chunkBuffers.delete(clientId);
 
     const command: FLCommand = { action, params };
     const sysexMessage = SysExCodec.encode(command, clientId);
@@ -160,6 +167,7 @@ export class MidiClient {
       const timeoutHandle = setTimeout(() => {
         debugLog(`TIMEOUT [${clientId}] ${action} after ${timeout}ms`);
         this.pendingRequests.delete(clientId);
+        this.chunkBuffers.delete(clientId);
         reject(new Error(`Command timeout after ${timeout}ms: ${action}`));
       }, timeout);
 
@@ -279,6 +287,13 @@ export class MidiClient {
 
     // Clear chunk accumulation buffers to prevent memory leaks
     this.chunkBuffers.clear();
+
+    // Detach the message handler so reconnects don't stack listeners.
+    try {
+      this.input.removeAllListeners('message');
+    } catch {
+      // Ignore — input may not have any listeners yet.
+    }
 
     // Close ports
     try {
