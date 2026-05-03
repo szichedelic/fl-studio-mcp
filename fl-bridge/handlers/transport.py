@@ -107,7 +107,8 @@ def handle_transport_state(params: Dict[str, Any]) -> Dict[str, Any]:
             success: True,
             playing: bool,
             recording: bool,
-            songPosition: str (Bars:Steps:Ticks format),
+            songPosition: str (Bars:Steps:Ticks formatted by FL Studio),
+            absoluteTicks: int (total ticks from start of project),
             loopMode: int
         }
     """
@@ -119,7 +120,11 @@ def handle_transport_state(params: Dict[str, Any]) -> Dict[str, Any]:
             'success': True,
             'playing': transport.isPlaying(),
             'recording': transport.isRecording(),
-            'songPosition': transport.getSongPos(4),  # MIDI_SONGPOS_ABSTICKS
+            # getSongPos(4) is STEPS, not ABSTICKS. Use getSongPosHint() for the
+            # human-readable "Bars:Steps:Ticks" string and getSongPos(2) for an
+            # exact integer position.
+            'songPosition': transport.getSongPosHint(),
+            'absoluteTicks': transport.getSongPos(2),
             'loopMode': transport.getLoopMode()
         }
     except Exception as e:

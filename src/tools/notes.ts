@@ -26,6 +26,38 @@ import type { NoteData } from '../music/types.js';
 const TRIGGER_HINT = 'Run ComposeWithBridge from Piano Roll > Tools > Scripting to apply.';
 
 /**
+ * Coordinate the bridge call and the .pyscript write so a failed bridge call
+ * doesn't leave a stale script on disk that would silently apply on the next
+ * manual run. Order:
+ *   1. Send the command to FL Studio.
+ *   2. If the command failed, do nothing — the previous .pyscript (if any)
+ *      stays untouched and the caller gets the bridge error.
+ *   3. On success, write the .pyscript.
+ *
+ * We accept a writer thunk rather than the action+notes directly so the same
+ * helper covers both `add_notes` and `clear`.
+ */
+async function stageAndConfirm(
+  connection: ConnectionManager,
+  action: string,
+  params: Record<string, unknown>,
+  writer: () => void,
+): Promise<{ ok: true; result: unknown } | { ok: false; error: string }> {
+  try {
+    const result = await connection.executeCommand(action, params);
+    if (!result.success) {
+      const error = result.error ?? JSON.stringify(result);
+      return { ok: false, error: `FL Bridge rejected ${action}: ${error}` };
+    }
+    writer();
+    return { ok: true, result };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { ok: false, error: message };
+  }
+}
+
+/**
  * Format a NoteData array into a human-readable summary.
  */
 function summarizeNotes(notes: NoteData[]): string {
@@ -168,36 +200,32 @@ export function registerNoteTools(
     'Add raw MIDI notes to FL Studio piano roll. Notes are staged as JSON for the ComposeWithBridge piano roll script.',
     addNotesSchema,
     async ({ notes, channel, clearFirst }) => {
-      try {
-        // Write .pyscript with embedded note data (Node.js has full FS access)
-        writePyscript('add_notes', notes as NoteData[], clearFirst);
+      const typed = notes as NoteData[];
+      const outcome = await stageAndConfirm(
+        connection,
+        'pianoroll.addNotes',
+        { notes, channel, clearFirst },
+        () => writePyscript('add_notes', typed, clearFirst),
+      );
 
-        // Tell FL Bridge to open piano roll and select channel
-        const result = await connection.executeCommand('pianoroll.addNotes', {
-          notes,
-          channel,
-          clearFirst,
-        });
-
-        const summary = summarizeNotes(notes as NoteData[]);
-        const text = [
-          `Staged ${notes.length} note(s) for piano roll.`,
-          summary,
-          '',
-          TRIGGER_HINT,
-          '',
-          'FL Bridge response:',
-          JSON.stringify(result, null, 2),
-        ].join('\n');
-
-        return { content: [{ type: 'text', text }] };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+      if (!outcome.ok) {
         return {
-          content: [{ type: 'text', text: `Error adding notes: ${message}` }],
+          content: [{ type: 'text', text: `Error adding notes: ${outcome.error}` }],
           isError: true,
         };
       }
+
+      const summary = summarizeNotes(typed);
+      const text = [
+        `Staged ${notes.length} note(s) for piano roll.`,
+        summary,
+        '',
+        TRIGGER_HINT,
+        '',
+        'FL Bridge response:',
+        JSON.stringify(outcome.result, null, 2),
+      ].join('\n');
+      return { content: [{ type: 'text', text }] };
     }
   );
 
@@ -218,7 +246,6 @@ export function registerNoteTools(
           velocity,
         });
 
-        // Apply humanization if requested
         let humanizeInfo = '';
         if (humanize) {
           const hResult = humanizeNotes(notes, {
@@ -229,14 +256,19 @@ export function registerNoteTools(
           humanizeInfo = `\nHumanized with "${humanize}" preset (seed: ${hResult.seed}, transforms: ${hResult.applied.join(', ')})`;
         }
 
-        // Write .pyscript with embedded note data
-        writePyscript('add_notes', notes, clearFirst);
+        const outcome = await stageAndConfirm(
+          connection,
+          'pianoroll.addNotes',
+          { notes, channel, clearFirst },
+          () => writePyscript('add_notes', notes, clearFirst),
+        );
 
-        const result = await connection.executeCommand('pianoroll.addNotes', {
-          notes,
-          channel,
-          clearFirst,
-        });
+        if (!outcome.ok) {
+          return {
+            content: [{ type: 'text', text: `Error creating chord progression: ${outcome.error}` }],
+            isError: true,
+          };
+        }
 
         const chordNames = progression.join(' - ');
         const text = [
@@ -248,7 +280,7 @@ export function registerNoteTools(
           TRIGGER_HINT,
           '',
           'FL Bridge response:',
-          JSON.stringify(result, null, 2),
+          JSON.stringify(outcome.result, null, 2),
         ].join('\n');
 
         return { content: [{ type: 'text', text }] };
@@ -282,7 +314,6 @@ export function registerNoteTools(
           velocity,
         });
 
-        // Apply humanization if requested
         let humanizeInfo = '';
         if (humanize) {
           const hResult = humanizeNotes(notes, {
@@ -293,14 +324,19 @@ export function registerNoteTools(
           humanizeInfo = `\nHumanized with "${humanize}" preset (seed: ${hResult.seed}, transforms: ${hResult.applied.join(', ')})`;
         }
 
-        // Write .pyscript with embedded note data
-        writePyscript('add_notes', notes, clearFirst);
+        const outcome = await stageAndConfirm(
+          connection,
+          'pianoroll.addNotes',
+          { notes, channel, clearFirst },
+          () => writePyscript('add_notes', notes, clearFirst),
+        );
 
-        const result = await connection.executeCommand('pianoroll.addNotes', {
-          notes,
-          channel,
-          clearFirst,
-        });
+        if (!outcome.ok) {
+          return {
+            content: [{ type: 'text', text: `Error creating melody: ${outcome.error}` }],
+            isError: true,
+          };
+        }
 
         const summary = summarizeNotes(notes);
         const text = [
@@ -311,7 +347,7 @@ export function registerNoteTools(
           TRIGGER_HINT,
           '',
           'FL Bridge response:',
-          JSON.stringify(result, null, 2),
+          JSON.stringify(outcome.result, null, 2),
         ].join('\n');
 
         return { content: [{ type: 'text', text }] };
@@ -355,7 +391,6 @@ export function registerNoteTools(
           velocity,
         });
 
-        // Apply humanization if requested
         let humanizeInfo = '';
         if (humanize) {
           const hResult = humanizeNotes(notes, {
@@ -366,14 +401,19 @@ export function registerNoteTools(
           humanizeInfo = `\nHumanized with "${humanize}" preset (seed: ${hResult.seed}, transforms: ${hResult.applied.join(', ')})`;
         }
 
-        // Write .pyscript with embedded note data
-        writePyscript('add_notes', notes, clearFirst);
+        const outcome = await stageAndConfirm(
+          connection,
+          'pianoroll.addNotes',
+          { notes, channel, clearFirst },
+          () => writePyscript('add_notes', notes, clearFirst),
+        );
 
-        const result = await connection.executeCommand('pianoroll.addNotes', {
-          notes,
-          channel,
-          clearFirst,
-        });
+        if (!outcome.ok) {
+          return {
+            content: [{ type: 'text', text: `Error creating bass line: ${outcome.error}` }],
+            isError: true,
+          };
+        }
 
         const chordNames = chordProgression.join(' - ');
         const summary = summarizeNotes(notes);
@@ -386,7 +426,7 @@ export function registerNoteTools(
           TRIGGER_HINT,
           '',
           'FL Bridge response:',
-          JSON.stringify(result, null, 2),
+          JSON.stringify(outcome.result, null, 2),
         ].join('\n');
 
         return { content: [{ type: 'text', text }] };
@@ -463,31 +503,29 @@ export function registerNoteTools(
     'Clear notes from the FL Studio piano roll. Stages a clear action for the ComposeWithBridge piano roll script.',
     clearNotesSchema,
     async ({ channel }) => {
-      try {
-        // Write .pyscript with clear action
-        writePyscript('clear');
+      const outcome = await stageAndConfirm(
+        connection,
+        'pianoroll.clearNotes',
+        { channel },
+        () => writePyscript('clear'),
+      );
 
-        const result = await connection.executeCommand('pianoroll.clearNotes', {
-          channel,
-        });
-
-        const text = [
-          'Clear request staged.',
-          '',
-          TRIGGER_HINT,
-          '',
-          'FL Bridge response:',
-          JSON.stringify(result, null, 2),
-        ].join('\n');
-
-        return { content: [{ type: 'text', text }] };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+      if (!outcome.ok) {
         return {
-          content: [{ type: 'text', text: `Error clearing notes: ${message}` }],
+          content: [{ type: 'text', text: `Error clearing notes: ${outcome.error}` }],
           isError: true,
         };
       }
+
+      const text = [
+        'Clear request staged.',
+        '',
+        TRIGGER_HINT,
+        '',
+        'FL Bridge response:',
+        JSON.stringify(outcome.result, null, 2),
+      ].join('\n');
+      return { content: [{ type: 'text', text }] };
     }
   );
 }

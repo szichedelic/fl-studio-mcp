@@ -61,20 +61,51 @@ EQ_BAND_NAMES = {0: 'Low', 1: 'Mid', 2: 'High'}
 def _resolve_track_ref(track_ref):
     """
     Resolve track reference to index.
-    Accepts: int (direct index) OR str (track name for lookup)
-    Returns: int index or None if not found
+
+    Accepts: int (direct index) OR str (track name for lookup).
+    Returns one of:
+      - int index               -> resolved
+      - None                    -> not found
+      - {'error': '...'}        -> ambiguous (multiple tracks matched)
+
+    Name matching prefers an exact case-insensitive match. Only falls back
+    to substring matching when there is no exact match. If the substring
+    fallback finds more than one candidate, the call is rejected — silently
+    routing the wrong track has caused real bugs in the past.
     """
     if mixer is None:
         return None
     if isinstance(track_ref, int):
         return track_ref
     if isinstance(track_ref, str):
-        track_ref_lower = track_ref.lower()
+        needle = track_ref.lower()
+        names = []
         for i in range(mixer.trackCount()):
-            name = mixer.getTrackName(i).lower()
-            if track_ref_lower == name or track_ref_lower in name:
-                return i
+            name = mixer.getTrackName(i)
+            names.append((i, name))
+            if needle == name.lower():
+                return i  # Exact match wins immediately.
+
+        substr = [(i, n) for i, n in names if needle in n.lower()]
+        if len(substr) == 1:
+            return substr[0][0]
+        if len(substr) > 1:
+            matched = ', '.join(f'{n!r} (#{i})' for i, n in substr)
+            return {'error': f'Ambiguous track name {track_ref!r}: matches {matched}'}
     return None
+
+
+def _resolve_or_error(track_ref, role: str = 'track'):
+    """
+    Helper for handlers: resolve a track ref and return either (index, None)
+    or (None, error_response) so the handler can early-return.
+    """
+    resolved = _resolve_track_ref(track_ref)
+    if resolved is None:
+        return None, {'success': False, 'error': f'Could not resolve {role}: {track_ref!r}'}
+    if isinstance(resolved, dict) and 'error' in resolved:
+        return None, {'success': False, 'error': resolved['error']}
+    return resolved, None
 
 
 def _validate_track_index(index: int) -> str | None:
@@ -493,9 +524,9 @@ def handle_mixer_get_track_sends(params: Dict[str, Any]) -> Dict[str, Any]:
             return {'success': False, 'error': 'Missing required parameter: index or name'}
 
         # Resolve to index
-        index = _resolve_track_ref(track_ref)
-        if index is None:
-            return {'success': False, 'error': f'Could not resolve track reference: {track_ref}'}
+        index, err = _resolve_or_error(track_ref)
+        if err:
+            return err
 
         # Validate index range
         error = _validate_track_index(index)
@@ -562,13 +593,12 @@ def handle_mixer_set_route(params: Dict[str, Any]) -> Dict[str, Any]:
             return {'success': False, 'error': 'Missing required parameter: enabled'}
 
         # Resolve source and destination
-        source = _resolve_track_ref(params['source'])
-        if source is None:
-            return {'success': False, 'error': f"Could not resolve source track: {params['source']}"}
-
-        destination = _resolve_track_ref(params['destination'])
-        if destination is None:
-            return {'success': False, 'error': f"Could not resolve destination track: {params['destination']}"}
+        source, err = _resolve_or_error(params['source'], 'source track')
+        if err:
+            return err
+        destination, err = _resolve_or_error(params['destination'], 'destination track')
+        if err:
+            return err
 
         # Validate both indices
         error = _validate_track_index(source)
@@ -633,13 +663,12 @@ def handle_mixer_set_route_level(params: Dict[str, Any]) -> Dict[str, Any]:
             return {'success': False, 'error': 'Missing required parameter: level'}
 
         # Resolve source and destination
-        source = _resolve_track_ref(params['source'])
-        if source is None:
-            return {'success': False, 'error': f"Could not resolve source track: {params['source']}"}
-
-        destination = _resolve_track_ref(params['destination'])
-        if destination is None:
-            return {'success': False, 'error': f"Could not resolve destination track: {params['destination']}"}
+        source, err = _resolve_or_error(params['source'], 'source track')
+        if err:
+            return err
+        destination, err = _resolve_or_error(params['destination'], 'destination track')
+        if err:
+            return err
 
         # Validate both indices
         error = _validate_track_index(source)
@@ -715,9 +744,9 @@ def handle_mixer_get_eq(params: Dict[str, Any]) -> Dict[str, Any]:
             return {'success': False, 'error': 'Missing required parameter: index or name'}
 
         # Resolve to index
-        index = _resolve_track_ref(track_ref)
-        if index is None:
-            return {'success': False, 'error': f'Could not resolve track reference: {track_ref}'}
+        index, err = _resolve_or_error(track_ref)
+        if err:
+            return err
 
         # Validate index range
         error = _validate_track_index(index)
@@ -792,9 +821,9 @@ def handle_mixer_set_eq_band(params: Dict[str, Any]) -> Dict[str, Any]:
         track_ref = params.get('index') if 'index' in params else params.get('name')
 
         # Resolve to index
-        index = _resolve_track_ref(track_ref)
-        if index is None:
-            return {'success': False, 'error': f'Could not resolve track reference: {track_ref}'}
+        index, err = _resolve_or_error(track_ref)
+        if err:
+            return err
 
         # Validate index range
         error = _validate_track_index(index)
