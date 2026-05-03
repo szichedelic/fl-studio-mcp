@@ -135,10 +135,18 @@ def parse_sysex(data: bytes) -> Dict[str, Any]:
                 'error': 'Empty payload'
             }
 
-        # Base64 decode the payload
+        # Base64 decode the payload. Validate that every byte is printable
+        # 7-bit ASCII before decoding so corrupt/non-base64 bytes produce a
+        # clear error instead of garbage JSON downstream.
+        for b in payload_bytes:
+            if b < 0x20 or b > 0x7e:
+                return {
+                    'client_id': client_id,
+                    'error': f'Non-ASCII payload byte: {hex(b)}'
+                }
         try:
             payload_str = bytes(payload_bytes).decode('ascii')
-            json_bytes = base64.b64decode(payload_str)
+            json_bytes = base64.b64decode(payload_str, validate=True)
             json_str = json_bytes.decode('utf-8')
         except Exception as e:
             return {

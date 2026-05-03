@@ -41,8 +41,16 @@ AUTHOR: FL Studio MCP Project
 # All imports and module-level code wrapped in try/except to prevent crashes
 # ============================================================================
 
-# Response queue for async response delivery
-_response_queue = []
+# Verbose per-message logging. Off by default to keep FL Studio's Script
+# output usable; flip on while debugging the bridge itself.
+_DEBUG = False
+
+
+def _dbg(msg):
+    """Print only when _DEBUG is on. Always safe to call."""
+    if _DEBUG:
+        print(msg)
+
 
 # Command handlers registry (populated by commands.py)
 _handlers = {}
@@ -154,20 +162,32 @@ def OnInit():
 def OnDeInit():
     """
     Called when FL Studio is closing or reloading the script.
-
-    Clean up any resources and clear queues.
     """
-    global _response_queue
-
     print("FL Bridge: Shutting down")
 
-    try:
-        # Clear response queue
-        _response_queue.clear()
 
-    except Exception as e:
-        # Even shutdown errors should be caught
-        print(f"FL Bridge: Error during shutdown - {e}")
+def _send_response(client_id, response, success):
+    """
+    Build a chunked SysEx response and send it synchronously.
+
+    All response paths (success, command-error, parse-error, exception)
+    go through here so the wire format is identical in every case —
+    chunked, with reassembly on the client side.
+    """
+    if not _protocol_loaded:
+        return
+    try:
+        chunks = _sysex.build_chunked_sysex_response(
+            client_id=client_id,
+            response=response,
+            success=success,
+        )
+        for chunk in chunks:
+            device.midiOutSysex(bytes(chunk))
+        _dbg(f"FL Bridge: Sent {len(chunks)} chunk(s) for client {client_id}")
+    except Exception as send_err:
+        # Don't re-raise — a failed send must not destabilise FL Studio.
+        print(f"FL Bridge: Failed to send response: {send_err}")
 
 
 def OnSysEx(event):
@@ -183,146 +203,66 @@ def OnSysEx(event):
     Args:
         event: FL Studio MIDI event object with .sysex attribute (bytes)
     """
-    global _response_queue
-
-    # DEBUG: Log every SysEx call
-    print(f"FL Bridge: OnSysEx called!")
-    print(f"FL Bridge: Event type: {type(event)}")
-    print(f"FL Bridge: Event dir: {[a for a in dir(event) if not a.startswith('_')]}")
+    _dbg("FL Bridge: OnSysEx called")
 
     try:
-        # Check if protocol is loaded
         if not _protocol_loaded:
             print("FL Bridge: SysEx received but protocol not loaded")
             event.handled = True
             return
 
-        # Get the SysEx data - try multiple attributes
-        sysex_data = None
-        if hasattr(event, 'sysex'):
-            sysex_data = event.sysex
-            print(f"FL Bridge: Found event.sysex: {type(sysex_data)}")
-        if sysex_data is None and hasattr(event, 'data'):
-            sysex_data = event.data
-            print(f"FL Bridge: Using event.data instead: {type(sysex_data)}")
+        # FL Studio uses .sysex on most builds; fall back to .data.
+        sysex_data = getattr(event, 'sysex', None)
         if sysex_data is None:
-            print("FL Bridge: No sysex data in event (checked .sysex and .data)")
+            sysex_data = getattr(event, 'data', None)
+        if sysex_data is None:
+            _dbg("FL Bridge: No sysex data on event")
             return
 
-        print(f"FL Bridge: SysEx data length: {len(sysex_data)}, first bytes: {list(sysex_data[:10]) if len(sysex_data) >= 10 else list(sysex_data)}")
-
-        # Check if this is our message (manufacturer ID 0x7D)
-        # SysEx format: F0 7D [origin] [client_id] ...
+        # Need at least F0 7D ... to identify our protocol.
         if len(sysex_data) < 3:
-            print("FL Bridge: SysEx too short")
             return
-
-        # Check for SysEx start (0xF0) and our manufacturer ID (0x7D)
         if sysex_data[0] != 0xF0 or sysex_data[1] != 0x7D:
-            # Not our message - let other scripts handle it
-            print(f"FL Bridge: Not our message (byte 0: {sysex_data[0]}, byte 1: {sysex_data[1]})")
+            # Not our message — let other scripts handle it.
             return
 
-        # Mark as handled so other scripts don't process it
+        # Mark as handled so other MIDI scripts don't reprocess it.
         event.handled = True
-        print("FL Bridge: Our message! Parsing...")
 
-        # Parse the SysEx message
         parsed = _sysex.parse_sysex(bytes(sysex_data))
-        print(f"FL Bridge: Parsed result: {parsed}")
 
         if 'error' in parsed:
-            # Parsing failed - send error response
-            error_response = {
-                'success': False,
-                'error': parsed['error']
-            }
-            client_id = parsed.get('client_id', 0)
-            _response_queue.append({
-                'client_id': client_id,
-                'response': error_response,
-                'success': False
-            })
             print(f"FL Bridge: Parse error - {parsed['error']}")
+            _send_response(
+                parsed.get('client_id', 0),
+                {'success': False, 'error': parsed['error']},
+                success=False,
+            )
             return
 
-        # Execute the command
-        print(f"FL Bridge: Executing command...")
         result = _commands.execute_command(parsed)
-        print(f"FL Bridge: Command result: {result}")
-
-        # Send response immediately (OnIdle not being called reliably)
-        # Use chunked sending to handle large payloads (e.g., plugin parameter lists)
-        try:
-            chunks = _sysex.build_chunked_sysex_response(
-                client_id=parsed['client_id'],
-                response=result,
-                success=result.get('success', True)
-            )
-            print(f"FL Bridge: Built response, {len(chunks)} chunk(s)")
-
-            # Send each chunk on same port (bidirectional single-port setup)
-            for i, chunk in enumerate(chunks):
-                device.midiOutSysex(bytes(chunk))
-                print(f"FL Bridge: Chunk {i+1}/{len(chunks)} sent ({len(chunk)} bytes)")
-
-            print(f"FL Bridge: Response sent!")
-        except Exception as send_err:
-            print(f"FL Bridge: Failed to send response: {send_err}")
+        _send_response(
+            parsed['client_id'],
+            result,
+            success=result.get('success', True),
+        )
 
     except Exception as e:
-        # Catch ALL exceptions to prevent FL Studio crash
+        # Catch ALL exceptions to prevent FL Studio crash.
         print(f"FL Bridge: Error in OnSysEx - {e}")
-
-        # Try to send error response if we can
         try:
             event.handled = True
-            if _protocol_loaded:
-                _response_queue.append({
-                    'client_id': 0,
-                    'response': {'success': False, 'error': str(e)},
-                    'success': False
-                })
-        except:
+            _send_response(0, {'success': False, 'error': str(e)}, success=False)
+        except Exception:
             pass
 
 
 def OnIdle():
     """
-    Called every ~20ms by FL Studio.
-
-    This is where we send queued responses. We process at most ONE response
-    per call to prevent blocking FL Studio's UI/audio thread.
-
-    Responses are built into SysEx messages and sent via device.midiOutSysex().
+    Called every ~20ms by FL Studio. We have nothing to do here — responses
+    are sent synchronously from OnSysEx via _send_response.
     """
-    global _response_queue
-
-    # Debug: check if OnIdle is being called when there's data
-    if _response_queue:
-        print(f"FL Bridge: OnIdle called with queue size: {len(_response_queue)}, protocol_loaded: {_protocol_loaded}")
-
-    try:
-        # Process at most 1 response per call to prevent blocking
-        if _response_queue and _protocol_loaded:
-            print(f"FL Bridge: OnIdle sending response, queue size: {len(_response_queue)}")
-            response_data = _response_queue.pop(0)
-
-            # Build SysEx response
-            sysex_bytes = _sysex.build_sysex_response(
-                client_id=response_data['client_id'],
-                response=response_data['response'],
-                success=response_data.get('success', True)
-            )
-            print(f"FL Bridge: Built SysEx response, length: {len(sysex_bytes)}")
-
-            # Send via MIDI
-            device.midiOutSysex(bytes(sysex_bytes))
-            print(f"FL Bridge: Response sent!")
-
-    except Exception as e:
-        # Log but don't crash - OnIdle is called continuously
-        print(f"FL Bridge: Error in OnIdle - {e}")
+    pass
 
 
 def OnMidiMsg(event):
@@ -349,28 +289,5 @@ def get_handlers():
     Returns the handlers dictionary for command registration.
 
     Called by commands.py to register command handlers.
-
-    Returns:
-        dict: The _handlers dictionary
     """
     return _handlers
-
-
-def queue_response(client_id: int, response: dict, success: bool = True):
-    """
-    Queue a response for delivery in OnIdle.
-
-    This can be called from command handlers that need to send
-    additional responses or notifications.
-
-    Args:
-        client_id: Client correlation ID
-        response: Response dictionary
-        success: Whether the response indicates success
-    """
-    global _response_queue
-    _response_queue.append({
-        'client_id': client_id,
-        'response': response,
-        'success': success
-    })

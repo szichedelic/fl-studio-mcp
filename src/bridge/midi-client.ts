@@ -7,7 +7,8 @@
 
 import midi, { Input, Output } from 'midi';
 import { SysExCodec } from './sysex-codec.js';
-import { debugLog, isDebugEnabled } from './debug-logger.js';
+import { ChunkReassembler } from './chunk-reassembler.js';
+import { debugLog } from './debug-logger.js';
 import type { FLCommand, FLResponse, PendingRequest, MidiPorts } from './types.js';
 
 /** Default timeout for pending requests in milliseconds */
@@ -17,7 +18,9 @@ export class MidiClient {
   private input: Input;
   private output: Output;
   private pendingRequests: Map<number, PendingRequest> = new Map();
-  private chunkBuffers: Map<number, number[][]> = new Map();
+  private reassembler = new ChunkReassembler();
+  // clientId range is 1..127. 0 is reserved as the bridge's
+  // "could not parse client id" sentinel, so we never assign it.
   private nextClientId = 1;
   private connected = false;
 
@@ -112,8 +115,8 @@ export class MidiClient {
       this.input.ignoreTypes(false, false, false);
 
       // Set up message handler
-      this.input.on('message', (deltaTime: number, message: number[]) => {
-        this.handleMessage(deltaTime, message);
+      this.input.on('message', (_deltaTime: number, message: number[]) => {
+        this.handleMessage(message);
       });
 
       // Open ports
@@ -150,7 +153,12 @@ export class MidiClient {
     }
 
     const clientId = this.nextClientId;
-    this.nextClientId = (this.nextClientId + 1) & 0x7f; // Wrap at 127
+    // Cycle 1..127, skipping 0 (reserved as the bridge's parse-error sentinel).
+    this.nextClientId = (this.nextClientId % 127) + 1;
+
+    // Drop any stale chunk fragments left over from a previous request that
+    // happened to use this id (e.g. timed out mid-stream).
+    this.reassembler.drop(clientId);
 
     const command: FLCommand = { action, params };
     const sysexMessage = SysExCodec.encode(command, clientId);
@@ -160,6 +168,7 @@ export class MidiClient {
       const timeoutHandle = setTimeout(() => {
         debugLog(`TIMEOUT [${clientId}] ${action} after ${timeout}ms`);
         this.pendingRequests.delete(clientId);
+        this.reassembler.drop(clientId);
         reject(new Error(`Command timeout after ${timeout}ms: ${action}`));
       }, timeout);
 
@@ -192,58 +201,24 @@ export class MidiClient {
    * single synthetic message for decoding. Single-chunk messages (the common
    * case) pass through unchanged.
    *
-   * @param deltaTime - Time since last message
    * @param message - Array of MIDI bytes
    */
-  private handleMessage(deltaTime: number, message: number[]): void {
+  private handleMessage(message: number[]): void {
     // Check if this is a SysEx message for our protocol
     if (message[0] !== 0xf0 || !SysExCodec.isValid(message)) {
       return;
     }
 
-    // Extract chunking header fields
-    const clientId = message[3];
-    const continuation = message[4];
-
-    if (continuation === 0x01) {
-      // More chunks coming -- accumulate payload bytes (between header and F7)
-      const payloadBytes = message.slice(7, -1);
-
-      if (!this.chunkBuffers.has(clientId)) {
-        this.chunkBuffers.set(clientId, []);
-      }
-      const buffer = this.chunkBuffers.get(clientId)!;
-      buffer.push(payloadBytes);
-
-      debugLog(`RX [${clientId}] chunk ${buffer.length} accumulated (${payloadBytes.length} bytes)`);
-      return; // Don't resolve yet -- wait for final chunk
-    }
-
-    // continuation === 0x00 -- final (or only) chunk
-    let decodingMessage = message;
-    const buffered = this.chunkBuffers.get(clientId);
-
-    if (buffered && buffered.length > 0) {
-      // Multi-chunk response: combine all accumulated payloads + this final chunk's payload
-      const finalPayload = message.slice(7, -1);
-      const combinedPayload = [...buffered.flat(), ...finalPayload];
-      this.chunkBuffers.delete(clientId);
-
-      // Build synthetic complete message for decoding
-      decodingMessage = [
-        ...message.slice(0, 7), // original header (F0, 7D, origin, clientId, 0x00, msgType, status)
-        ...combinedPayload,
-        0xf7,
-      ];
-
-      debugLog(`RX [${clientId}] reassembled ${buffered.length + 1} chunks (${combinedPayload.length} payload bytes)`);
+    const reassembled = this.reassembler.push(message);
+    if (reassembled === null) {
+      // Mid-stream — wait for the final chunk.
+      return;
     }
 
     try {
-      const { clientId: cid, data } = SysExCodec.decode(decodingMessage);
-      debugLog(`RX [${cid}] success=${data.success} (${decodingMessage.length} bytes)`);
+      const { clientId: cid, data } = SysExCodec.decode(reassembled.message);
+      debugLog(`RX [${cid}] success=${data.success} (${reassembled.message.length} bytes)`);
 
-      // Find and resolve pending request
       const pending = this.pendingRequests.get(cid);
       if (pending) {
         this.pendingRequests.delete(cid);
@@ -278,7 +253,14 @@ export class MidiClient {
     }
 
     // Clear chunk accumulation buffers to prevent memory leaks
-    this.chunkBuffers.clear();
+    this.reassembler.clear();
+
+    // Detach the message handler so reconnects don't stack listeners.
+    try {
+      this.input.removeAllListeners('message');
+    } catch {
+      // Ignore — input may not have any listeners yet.
+    }
 
     // Close ports
     try {

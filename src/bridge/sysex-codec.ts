@@ -58,8 +58,10 @@ export class SysExCodec {
     const jsonStr = JSON.stringify(command);
     const base64Str = Buffer.from(jsonStr, 'utf-8').toString('base64');
 
-    // Convert base64 string to 7-bit safe bytes
-    const payloadBytes = Array.from(base64Str).map((char) => char.charCodeAt(0) & 0x7f);
+    // Base64 output is already 7-bit ASCII (A-Z, a-z, 0-9, +, /, =), so no
+    // masking is needed. Masking would silently corrupt any non-base64 byte
+    // rather than surface the bug, so we leave bytes untouched.
+    const payloadBytes = Array.from(base64Str).map((char) => char.charCodeAt(0));
 
     // Build complete SysEx message
     const message = [
