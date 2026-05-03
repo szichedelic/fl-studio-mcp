@@ -9,6 +9,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ConnectionManager } from './bridge/connection.js';
 import { registerTools } from './tools/index.js';
+import { soxRunner } from './audio/sox-runner.js';
 
 // Create the MCP server
 const server = new McpServer({
@@ -77,7 +78,6 @@ async function main() {
 
   // Check SoX availability for sample manipulation tools
   try {
-    const { soxRunner } = await import('./audio/sox-runner.js');
     const version = await soxRunner.verify();
     console.error(`[fl-studio-mcp] SoX available: ${version}`);
   } catch {

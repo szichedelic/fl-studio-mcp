@@ -98,6 +98,3 @@ export class ConnectionManager {
     this.state = 'disconnected';
   }
 }
-
-// Export singleton instance for convenience
-export const connectionManager = new ConnectionManager();

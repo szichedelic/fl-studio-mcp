@@ -21,28 +21,38 @@ import { registerMixerTools } from './mixer.js';
 import { registerPlaylistTools } from './playlist.js';
 import { registerProjectTools } from './project.js';
 
+type ToolGroup = readonly [
+  name: string,
+  register: (server: McpServer, connection: ConnectionManager) => void,
+];
+
+const TOOL_GROUPS: readonly ToolGroup[] = [
+  ['transport', registerTransportTools],
+  ['state', registerStateTools],
+  ['patterns', registerPatternTools],
+  ['notes', registerNoteTools],
+  ['humanize', registerHumanizeTools],
+  ['plugins', registerPluginTools],
+  ['serum', registerSerumTools],
+  ['render', registerRenderTools],
+  ['sample', registerSampleTools],
+  ['mixer', registerMixerTools],
+  ['playlist', registerPlaylistTools],
+  ['project', registerProjectTools],
+];
+
 /**
- * Register all MCP tools with the server
- *
- * @param server - The MCP server instance
- * @param connection - The ConnectionManager for FL Studio communication
+ * Register all MCP tools with the server. Iterating over a single source of
+ * truth keeps the startup log message in sync with the actual registrations.
  */
 export function registerTools(
   server: McpServer,
   connection: ConnectionManager
 ): void {
-  registerTransportTools(server, connection);
-  registerStateTools(server, connection);
-  registerPatternTools(server, connection);
-  registerNoteTools(server, connection);
-  registerHumanizeTools(server, connection);
-  registerPluginTools(server, connection);
-  registerSerumTools(server, connection);
-  registerRenderTools(server, connection);
-  registerSampleTools(server, connection);
-  registerMixerTools(server, connection);
-  registerPlaylistTools(server, connection);
-  registerProjectTools(server, connection);
+  for (const [, register] of TOOL_GROUPS) {
+    register(server, connection);
+  }
 
-  console.error('[fl-studio-mcp] Registered tools: transport, state, patterns, notes, humanize, plugins, serum, render, sample, mixer, playlist, project');
+  const groupNames = TOOL_GROUPS.map(([name]) => name).join(', ');
+  console.error(`[fl-studio-mcp] Registered tool groups: ${groupNames}`);
 }

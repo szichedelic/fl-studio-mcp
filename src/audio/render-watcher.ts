@@ -6,7 +6,7 @@
 
 import chokidar from 'chokidar';
 import { basename, join } from 'node:path';
-import { existsSync, mkdirSync, type Stats } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, statSync, type Stats } from 'node:fs';
 import { renderRegistry } from './render-registry.js';
 import type { RenderInfo } from './types.js';
 
@@ -36,6 +36,11 @@ export class RenderWatcher {
     if (!existsSync(directory)) {
       mkdirSync(directory, { recursive: true });
     }
+
+    // Seed the registry with WAVs already on disk so render lookups by
+    // filename keep working across server restarts. chokidar's
+    // ignoreInitial=true means we won't see these via the 'add' event.
+    this.seedFromDisk(directory);
 
     console.error(`[render-watcher] Watching: ${directory}`);
 
@@ -75,6 +80,44 @@ export class RenderWatcher {
     });
 
     this.watchedDir = directory;
+  }
+
+  /**
+   * Walk the watched directory once and register every existing .wav file,
+   * preserving the file's mtime as the render timestamp so listings stay in
+   * a sensible order across restarts.
+   */
+  private seedFromDisk(directory: string): void {
+    let entries: string[];
+    try {
+      entries = readdirSync(directory);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(`[render-watcher] Could not seed registry: ${msg}`);
+      return;
+    }
+
+    let seeded = 0;
+    for (const entry of entries) {
+      if (!entry.toLowerCase().endsWith('.wav')) continue;
+      const fullPath = join(directory, entry);
+      try {
+        const stat = statSync(fullPath);
+        if (!stat.isFile()) continue;
+        renderRegistry.register({
+          path: fullPath,
+          filename: entry,
+          timestamp: stat.mtimeMs,
+        });
+        seeded++;
+      } catch {
+        // Skip files we can't stat (permission errors, broken symlinks).
+      }
+    }
+
+    if (seeded > 0) {
+      console.error(`[render-watcher] Seeded ${seeded} existing render(s)`);
+    }
   }
 
   /**

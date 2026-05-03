@@ -7,7 +7,7 @@
 
 import midi, { Input, Output } from 'midi';
 import { SysExCodec } from './sysex-codec.js';
-import { debugLog, isDebugEnabled } from './debug-logger.js';
+import { debugLog } from './debug-logger.js';
 import type { FLCommand, FLResponse, PendingRequest, MidiPorts } from './types.js';
 
 /** Default timeout for pending requests in milliseconds */
@@ -114,8 +114,8 @@ export class MidiClient {
       this.input.ignoreTypes(false, false, false);
 
       // Set up message handler
-      this.input.on('message', (deltaTime: number, message: number[]) => {
-        this.handleMessage(deltaTime, message);
+      this.input.on('message', (_deltaTime: number, message: number[]) => {
+        this.handleMessage(message);
       });
 
       // Open ports
@@ -200,10 +200,9 @@ export class MidiClient {
    * single synthetic message for decoding. Single-chunk messages (the common
    * case) pass through unchanged.
    *
-   * @param deltaTime - Time since last message
    * @param message - Array of MIDI bytes
    */
-  private handleMessage(deltaTime: number, message: number[]): void {
+  private handleMessage(message: number[]): void {
     // Check if this is a SysEx message for our protocol
     if (message[0] !== 0xf0 || !SysExCodec.isValid(message)) {
       return;
