@@ -9,66 +9,53 @@
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ConnectionManager } from '../bridge/connection.js';
+import { runBridgeTool } from './util.js';
 
-/**
- * Register transport control tools with the MCP server
- *
- * @param server - The MCP server instance
- * @param connection - The ConnectionManager for FL Studio communication
- */
 export function registerTransportTools(
   server: McpServer,
-  connection: ConnectionManager
+  connection: ConnectionManager,
 ): void {
-  // Transport Play
   server.tool(
     'transport_play',
     'Start playback in FL Studio',
     {},
-    async () => {
-      const result = await connection.executeCommand('transport.start', {});
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-      };
-    }
+    () => runBridgeTool(connection, {
+      action: 'transport.start',
+      args: {},
+      describe: 'start playback',
+    }),
   );
 
-  // Transport Stop
   server.tool(
     'transport_stop',
     'Stop playback in FL Studio',
     {},
-    async () => {
-      const result = await connection.executeCommand('transport.stop', {});
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-      };
-    }
+    () => runBridgeTool(connection, {
+      action: 'transport.stop',
+      args: {},
+      describe: 'stop playback',
+    }),
   );
 
-  // Transport Record
   server.tool(
     'transport_record',
     'Toggle recording in FL Studio',
     {},
-    async () => {
-      const result = await connection.executeCommand('transport.record', {});
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-      };
-    }
+    () => runBridgeTool(connection, {
+      action: 'transport.record',
+      args: {},
+      describe: 'toggle recording',
+    }),
   );
 
-  // Transport State
   server.tool(
     'transport_state',
     'Get current transport state (playing, recording, position)',
     {},
-    async () => {
-      const result = await connection.executeCommand('transport.state', {});
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-      };
-    }
+    () => runBridgeTool(connection, {
+      action: 'transport.state',
+      args: {},
+      describe: 'get transport state',
+    }),
   );
 }

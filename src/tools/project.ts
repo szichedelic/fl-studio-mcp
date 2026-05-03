@@ -9,59 +9,50 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ConnectionManager } from '../bridge/connection.js';
+import { runBridgeTool } from './util.js';
 
 /**
  * Register project control tools with the MCP server
- *
- * @param server - The MCP server instance
- * @param connection - The ConnectionManager for FL Studio communication
  */
 export function registerProjectTools(
   server: McpServer,
-  connection: ConnectionManager
+  connection: ConnectionManager,
 ): void {
-  // Get Tempo
   server.tool(
     'get_tempo',
     'Get current project tempo (BPM)',
     {},
-    async () => {
-      const result = await connection.executeCommand('project.get_tempo', {});
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-      };
-    }
+    () => runBridgeTool(connection, {
+      action: 'project.get_tempo',
+      args: {},
+      describe: 'get tempo',
+    }),
   );
 
-  // Set Tempo
   server.tool(
     'set_tempo',
     'Set project tempo in BPM',
     {
       bpm: z.number().min(10).max(999).describe('Tempo in BPM (10-999)'),
     },
-    async ({ bpm }) => {
-      const result = await connection.executeCommand('project.set_tempo', { bpm });
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-      };
-    }
+    (args) => runBridgeTool(connection, {
+      action: 'project.set_tempo',
+      args,
+      describe: 'set tempo',
+    }),
   );
 
-  // Get Position
   server.tool(
     'get_position',
     'Get current playback position (bars, steps, ticks, ms)',
     {},
-    async () => {
-      const result = await connection.executeCommand('project.get_position', {});
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-      };
-    }
+    () => runBridgeTool(connection, {
+      action: 'project.get_position',
+      args: {},
+      describe: 'get position',
+    }),
   );
 
-  // Set Position
   server.tool(
     'set_position',
     'Jump to playback position (by bars, ticks, ms, or seconds)',
@@ -71,38 +62,32 @@ export function registerProjectTools(
       ms: z.number().min(0).optional().describe('Position in milliseconds'),
       seconds: z.number().min(0).optional().describe('Position in seconds'),
     },
-    async (params) => {
-      // Pass through whichever param was provided
-      const result = await connection.executeCommand('project.set_position', params);
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-      };
-    }
+    (args) => runBridgeTool(connection, {
+      action: 'project.set_position',
+      args,
+      describe: 'set position',
+    }),
   );
 
-  // Undo
   server.tool(
     'undo',
     'Undo the last operation in FL Studio',
     {},
-    async () => {
-      const result = await connection.executeCommand('project.undo', {});
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-      };
-    }
+    () => runBridgeTool(connection, {
+      action: 'project.undo',
+      args: {},
+      describe: 'undo',
+    }),
   );
 
-  // Redo
   server.tool(
     'redo',
     'Redo the last undone operation in FL Studio',
     {},
-    async () => {
-      const result = await connection.executeCommand('project.redo', {});
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-      };
-    }
+    () => runBridgeTool(connection, {
+      action: 'project.redo',
+      args: {},
+      describe: 'redo',
+    }),
   );
 }

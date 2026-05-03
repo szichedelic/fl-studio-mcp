@@ -10,18 +10,12 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ConnectionManager } from '../bridge/connection.js';
 import { z } from 'zod';
+import { runBridgeTool } from './util.js';
 
-/**
- * Register pattern operation tools with the MCP server
- *
- * @param server - The MCP server instance
- * @param connection - The ConnectionManager for FL Studio communication
- */
 export function registerPatternTools(
   server: McpServer,
-  connection: ConnectionManager
+  connection: ConnectionManager,
 ): void {
-  // Define schemas separately to avoid deep type instantiation
   const patternSelectSchema = {
     index: z.number().int().min(1).describe('Pattern index (1-based)'),
   };
@@ -36,42 +30,36 @@ export function registerPatternTools(
     name: z.string().describe('New pattern name'),
   };
 
-  // Pattern Select
   server.tool(
     'pattern_select',
     'Select a pattern by index',
     patternSelectSchema,
-    async ({ index }) => {
-      const result = await connection.executeCommand('pattern.select', {
-        index,
-      });
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-      };
-    }
+    (args) => runBridgeTool(connection, {
+      action: 'pattern.select',
+      args,
+      describe: 'select pattern',
+    }),
   );
 
-  // Pattern Create
-  server.tool('pattern_create', 'Create a new empty pattern', {}, async () => {
-    const result = await connection.executeCommand('pattern.create', {});
-    return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-    };
-  });
+  server.tool(
+    'pattern_create',
+    'Create a new empty pattern',
+    {},
+    () => runBridgeTool(connection, {
+      action: 'pattern.create',
+      args: {},
+      describe: 'create pattern',
+    }),
+  );
 
-  // Pattern Rename
   server.tool(
     'pattern_rename',
     'Rename a pattern',
     patternRenameSchema,
-    async ({ index, name }) => {
-      const result = await connection.executeCommand('pattern.rename', {
-        index,
-        name,
-      });
-      return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-      };
-    }
+    (args) => runBridgeTool(connection, {
+      action: 'pattern.rename',
+      args,
+      describe: 'rename pattern',
+    }),
   );
 }

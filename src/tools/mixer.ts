@@ -16,6 +16,7 @@ import { z } from 'zod';
 import { paramCache } from '../plugins/param-cache.js';
 import { shadowState } from '../plugins/shadow-state.js';
 import { rgbHexToBgr, RGB_HEX_RE } from '../util/color.js';
+import { runBridgeTool } from './util.js';
 
 /**
  * Convert level input to FL Studio normalized value (0.0-1.0).
@@ -76,31 +77,12 @@ export function registerMixerTools(
     'set_mixer_volume',
     "Set a mixer track's volume level (0.0-1.0, where 0.8 = unity/0dB)",
     setVolumeSchema,
-    async ({ track, volume }) => {
-      try {
-        const result = await connection.executeCommand('mixer.set_volume', {
-          index: track,
-          volume,
-        });
-
-        if (!result.success) {
-          return {
-            content: [{ type: 'text', text: `Failed to set mixer volume: ${JSON.stringify(result)}` }],
-            isError: true,
-          };
-        }
-
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text', text: `Error setting mixer volume: ${message}` }],
-          isError: true,
-        };
-      }
-    },
+    (args) => runBridgeTool(connection, {
+      action: 'mixer.set_volume',
+      args,
+      buildParams: ({ track, volume }) => ({ index: track, volume }),
+      describe: 'set mixer volume',
+    }),
   );
 
   // ── set_mixer_pan ────────────────────────────────────────────────────────
@@ -116,31 +98,12 @@ export function registerMixerTools(
     'set_mixer_pan',
     "Set a mixer track's pan position (-1.0=left, 0=center, 1.0=right)",
     setPanSchema,
-    async ({ track, pan }) => {
-      try {
-        const result = await connection.executeCommand('mixer.set_pan', {
-          index: track,
-          pan,
-        });
-
-        if (!result.success) {
-          return {
-            content: [{ type: 'text', text: `Failed to set mixer pan: ${JSON.stringify(result)}` }],
-            isError: true,
-          };
-        }
-
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text', text: `Error setting mixer pan: ${message}` }],
-          isError: true,
-        };
-      }
-    },
+    (args) => runBridgeTool(connection, {
+      action: 'mixer.set_pan',
+      args,
+      buildParams: ({ track, pan }) => ({ index: track, pan }),
+      describe: 'set mixer pan',
+    }),
   );
 
   // ── mute_mixer_track ─────────────────────────────────────────────────────
@@ -156,31 +119,12 @@ export function registerMixerTools(
     'mute_mixer_track',
     'Mute or unmute a mixer track',
     muteSchema,
-    async ({ track, mute }) => {
-      try {
-        const result = await connection.executeCommand('mixer.mute', {
-          index: track,
-          mute,
-        });
-
-        if (!result.success) {
-          return {
-            content: [{ type: 'text', text: `Failed to mute/unmute track: ${JSON.stringify(result)}` }],
-            isError: true,
-          };
-        }
-
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text', text: `Error muting/unmuting track: ${message}` }],
-          isError: true,
-        };
-      }
-    },
+    (args) => runBridgeTool(connection, {
+      action: 'mixer.mute',
+      args,
+      buildParams: ({ track, mute }) => ({ index: track, mute }),
+      describe: 'mute/unmute track',
+    }),
   );
 
   // ── solo_mixer_track ─────────────────────────────────────────────────────
@@ -196,31 +140,12 @@ export function registerMixerTools(
     'solo_mixer_track',
     'Solo or unsolo a mixer track',
     soloSchema,
-    async ({ track, solo }) => {
-      try {
-        const result = await connection.executeCommand('mixer.solo', {
-          index: track,
-          solo,
-        });
-
-        if (!result.success) {
-          return {
-            content: [{ type: 'text', text: `Failed to solo/unsolo track: ${JSON.stringify(result)}` }],
-            isError: true,
-          };
-        }
-
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text', text: `Error solo/unsolo track: ${message}` }],
-          isError: true,
-        };
-      }
-    },
+    (args) => runBridgeTool(connection, {
+      action: 'mixer.solo',
+      args,
+      buildParams: ({ track, solo }) => ({ index: track, solo }),
+      describe: 'solo/unsolo track',
+    }),
   );
 
   // ── set_mixer_track_name ─────────────────────────────────────────────────
@@ -236,31 +161,12 @@ export function registerMixerTools(
     'set_mixer_track_name',
     "Set a mixer track's display name",
     setNameSchema,
-    async ({ track, name }) => {
-      try {
-        const result = await connection.executeCommand('mixer.set_name', {
-          index: track,
-          name,
-        });
-
-        if (!result.success) {
-          return {
-            content: [{ type: 'text', text: `Failed to set track name: ${JSON.stringify(result)}` }],
-            isError: true,
-          };
-        }
-
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text', text: `Error setting track name: ${message}` }],
-          isError: true,
-        };
-      }
-    },
+    (args) => runBridgeTool(connection, {
+      action: 'mixer.set_name',
+      args,
+      buildParams: ({ track, name }) => ({ index: track, name }),
+      describe: 'set track name',
+    }),
   );
 
   // ── set_mixer_track_color ────────────────────────────────────────────────
@@ -276,34 +182,12 @@ export function registerMixerTools(
     'set_mixer_track_color',
     "Set a mixer track's color (accepts RGB hex like '#FF0000' for red)",
     setColorSchema,
-    async ({ track, color }) => {
-      try {
-        // Convert RGB hex to FL Studio BGR format
-        const bgrValue = rgbHexToBgr(color);
-
-        const result = await connection.executeCommand('mixer.set_color', {
-          index: track,
-          color: bgrValue,
-        });
-
-        if (!result.success) {
-          return {
-            content: [{ type: 'text', text: `Failed to set track color: ${JSON.stringify(result)}` }],
-            isError: true,
-          };
-        }
-
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text', text: `Error setting track color: ${message}` }],
-          isError: true,
-        };
-      }
-    },
+    (args) => runBridgeTool(connection, {
+      action: 'mixer.set_color',
+      args,
+      buildParams: ({ track, color }) => ({ index: track, color: rgbHexToBgr(color) }),
+      describe: 'set track color',
+    }),
   );
 
   // ── get_mixer_routing ─────────────────────────────────────────────────────
@@ -312,28 +196,11 @@ export function registerMixerTools(
     'get_mixer_routing',
     'Get full routing table showing all active send routes between mixer tracks',
     {},
-    async () => {
-      try {
-        const result = await connection.executeCommand('mixer.get_routing', {});
-
-        if (!result.success) {
-          return {
-            content: [{ type: 'text', text: `Failed to get mixer routing: ${JSON.stringify(result)}` }],
-            isError: true,
-          };
-        }
-
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text', text: `Error getting mixer routing: ${message}` }],
-          isError: true,
-        };
-      }
-    },
+    () => runBridgeTool(connection, {
+      action: 'mixer.get_routing',
+      args: {},
+      describe: 'get mixer routing',
+    }),
   );
 
   // ── get_track_sends ───────────────────────────────────────────────────────
@@ -347,29 +214,12 @@ export function registerMixerTools(
     'get_track_sends',
     'Get all send routes for a specific mixer track (by index or name)',
     getTrackSendsSchema,
-    async ({ track }) => {
-      try {
-        const params = typeof track === 'number' ? { index: track } : { name: track };
-        const result = await connection.executeCommand('mixer.get_track_sends', params);
-
-        if (!result.success) {
-          return {
-            content: [{ type: 'text', text: `Failed to get track sends: ${JSON.stringify(result)}` }],
-            isError: true,
-          };
-        }
-
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text', text: `Error getting track sends: ${message}` }],
-          isError: true,
-        };
-      }
-    },
+    (args) => runBridgeTool(connection, {
+      action: 'mixer.get_track_sends',
+      args,
+      buildParams: ({ track }) => typeof track === 'number' ? { index: track } : { name: track },
+      describe: 'get track sends',
+    }),
   );
 
   // ── create_send ───────────────────────────────────────────────────────────
@@ -447,33 +297,12 @@ export function registerMixerTools(
     'remove_send',
     'Remove a send route between mixer tracks (by index or name)',
     removeSendSchema,
-    async ({ source, destination }) => {
-      try {
-        // Handler's _resolve_track_ref handles both int and str
-        const result = await connection.executeCommand('mixer.set_route', {
-          source,
-          destination,
-          enabled: false,
-        });
-
-        if (!result.success) {
-          return {
-            content: [{ type: 'text', text: `Failed to remove send: ${JSON.stringify(result)}` }],
-            isError: true,
-          };
-        }
-
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text', text: `Error removing send: ${message}` }],
-          isError: true,
-        };
-      }
-    },
+    (args) => runBridgeTool(connection, {
+      action: 'mixer.set_route',
+      args,
+      buildParams: ({ source, destination }) => ({ source, destination, enabled: false }),
+      describe: 'remove send',
+    }),
   );
 
   // ── set_send_level ────────────────────────────────────────────────────────
@@ -545,29 +374,12 @@ export function registerMixerTools(
     'get_mixer_eq',
     'Get EQ settings for a mixer track (by index or name). Returns all 3 bands with gain (normalized + dB), frequency (normalized + Hz), and bandwidth.',
     getMixerEqSchema,
-    async ({ track }) => {
-      try {
-        const params = typeof track === 'number' ? { index: track } : { name: track };
-        const result = await connection.executeCommand('mixer.get_eq', params);
-
-        if (!result.success) {
-          return {
-            content: [{ type: 'text', text: `Failed to get mixer EQ: ${JSON.stringify(result)}` }],
-            isError: true,
-          };
-        }
-
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text', text: `Error getting mixer EQ: ${message}` }],
-          isError: true,
-        };
-      }
-    },
+    (args) => runBridgeTool(connection, {
+      action: 'mixer.get_eq',
+      args,
+      buildParams: ({ track }) => typeof track === 'number' ? { index: track } : { name: track },
+      describe: 'get mixer EQ',
+    }),
   );
 
   // ── set_mixer_eq_band ─────────────────────────────────────────────────────
@@ -589,36 +401,20 @@ export function registerMixerTools(
     'set_mixer_eq_band',
     'Set EQ band parameters for a mixer track. Band: 0=Low, 1=Mid, 2=High. Values are normalized 0-1. At least one of gain/frequency/bandwidth should be provided.',
     setMixerEqBandSchema,
-    async ({ track, band, gain, frequency, bandwidth }) => {
-      try {
-        const trackParam = typeof track === 'number' ? { index: track } : { name: track };
-
-        // Build params with only defined values
-        const eqParams: Record<string, unknown> = { ...trackParam, band };
-        if (gain !== undefined) eqParams.gain = gain;
-        if (frequency !== undefined) eqParams.frequency = frequency;
-        if (bandwidth !== undefined) eqParams.bandwidth = bandwidth;
-
-        const result = await connection.executeCommand('mixer.set_eq_band', eqParams);
-
-        if (!result.success) {
-          return {
-            content: [{ type: 'text', text: `Failed to set mixer EQ band: ${JSON.stringify(result)}` }],
-            isError: true,
-          };
-        }
-
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text', text: `Error setting mixer EQ band: ${message}` }],
-          isError: true,
-        };
-      }
-    },
+    (args) => runBridgeTool(connection, {
+      action: 'mixer.set_eq_band',
+      args,
+      buildParams: ({ track, band, gain, frequency, bandwidth }) => {
+        const params: Record<string, unknown> = typeof track === 'number'
+          ? { index: track, band }
+          : { name: track, band };
+        if (gain !== undefined) params.gain = gain;
+        if (frequency !== undefined) params.frequency = frequency;
+        if (bandwidth !== undefined) params.bandwidth = bandwidth;
+        return params;
+      },
+      describe: 'set mixer EQ band',
+    }),
   );
 
   // ── discover_mixer_effect ─────────────────────────────────────────────────

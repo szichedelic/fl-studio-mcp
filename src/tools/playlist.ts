@@ -28,6 +28,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ConnectionManager } from '../bridge/connection.js';
 import { z } from 'zod';
 import { rgbHexToBgr, RGB_HEX_RE } from '../util/color.js';
+import { runBridgeTool } from './util.js';
 
 /**
  * Register playlist track control tools with the MCP server.
@@ -45,28 +46,11 @@ export function registerPlaylistTools(
     'get_playlist_tracks',
     'Get all playlist tracks with their names, colors, mute, and solo states. Note: Playlist tracks are 1-indexed (first track = 1).',
     {},
-    async () => {
-      try {
-        const result = await connection.executeCommand('playlist.get_tracks', {});
-
-        if (!result.success) {
-          return {
-            content: [{ type: 'text', text: `Failed to get playlist tracks: ${JSON.stringify(result)}` }],
-            isError: true,
-          };
-        }
-
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text', text: `Error getting playlist tracks: ${message}` }],
-          isError: true,
-        };
-      }
-    },
+    () => runBridgeTool(connection, {
+      action: 'playlist.get_tracks',
+      args: {},
+      describe: 'get playlist tracks',
+    }),
   );
 
   // ── mute_playlist_track ─────────────────────────────────────────────────
@@ -82,31 +66,12 @@ export function registerPlaylistTools(
     'mute_playlist_track',
     'Mute or unmute a playlist track. Tracks are 1-indexed (first track = 1).',
     muteSchema,
-    async ({ track, mute }) => {
-      try {
-        const result = await connection.executeCommand('playlist.mute', {
-          index: track,
-          mute,
-        });
-
-        if (!result.success) {
-          return {
-            content: [{ type: 'text', text: `Failed to mute/unmute playlist track: ${JSON.stringify(result)}` }],
-            isError: true,
-          };
-        }
-
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text', text: `Error muting/unmuting playlist track: ${message}` }],
-          isError: true,
-        };
-      }
-    },
+    (args) => runBridgeTool(connection, {
+      action: 'playlist.mute',
+      args,
+      buildParams: ({ track, mute }) => ({ index: track, mute }),
+      describe: 'mute/unmute playlist track',
+    }),
   );
 
   // ── solo_playlist_track ─────────────────────────────────────────────────
@@ -122,31 +87,12 @@ export function registerPlaylistTools(
     'solo_playlist_track',
     'Solo or unsolo a playlist track. Tracks are 1-indexed (first track = 1).',
     soloSchema,
-    async ({ track, solo }) => {
-      try {
-        const result = await connection.executeCommand('playlist.solo', {
-          index: track,
-          solo,
-        });
-
-        if (!result.success) {
-          return {
-            content: [{ type: 'text', text: `Failed to solo/unsolo playlist track: ${JSON.stringify(result)}` }],
-            isError: true,
-          };
-        }
-
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text', text: `Error solo/unsolo playlist track: ${message}` }],
-          isError: true,
-        };
-      }
-    },
+    (args) => runBridgeTool(connection, {
+      action: 'playlist.solo',
+      args,
+      buildParams: ({ track, solo }) => ({ index: track, solo }),
+      describe: 'solo/unsolo playlist track',
+    }),
   );
 
   // ── set_playlist_track_name ─────────────────────────────────────────────
@@ -162,31 +108,12 @@ export function registerPlaylistTools(
     'set_playlist_track_name',
     "Set a playlist track's display name. Empty string resets to default. Tracks are 1-indexed.",
     setNameSchema,
-    async ({ track, name }) => {
-      try {
-        const result = await connection.executeCommand('playlist.set_name', {
-          index: track,
-          name,
-        });
-
-        if (!result.success) {
-          return {
-            content: [{ type: 'text', text: `Failed to set playlist track name: ${JSON.stringify(result)}` }],
-            isError: true,
-          };
-        }
-
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text', text: `Error setting playlist track name: ${message}` }],
-          isError: true,
-        };
-      }
-    },
+    (args) => runBridgeTool(connection, {
+      action: 'playlist.set_name',
+      args,
+      buildParams: ({ track, name }) => ({ index: track, name }),
+      describe: 'set playlist track name',
+    }),
   );
 
   // ── set_playlist_track_color ────────────────────────────────────────────
@@ -202,34 +129,12 @@ export function registerPlaylistTools(
     'set_playlist_track_color',
     "Set a playlist track's color (accepts RGB hex like '#FF0000'). Tracks are 1-indexed.",
     setColorSchema,
-    async ({ track, color }) => {
-      try {
-        // Convert RGB hex to FL Studio BGR format
-        const bgrValue = rgbHexToBgr(color);
-
-        const result = await connection.executeCommand('playlist.set_color', {
-          index: track,
-          color: bgrValue,
-        });
-
-        if (!result.success) {
-          return {
-            content: [{ type: 'text', text: `Failed to set playlist track color: ${JSON.stringify(result)}` }],
-            isError: true,
-          };
-        }
-
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text', text: `Error setting playlist track color: ${message}` }],
-          isError: true,
-        };
-      }
-    },
+    (args) => runBridgeTool(connection, {
+      action: 'playlist.set_color',
+      args,
+      buildParams: ({ track, color }) => ({ index: track, color: rgbHexToBgr(color) }),
+      describe: 'set playlist track color',
+    }),
   );
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -242,28 +147,11 @@ export function registerPlaylistTools(
     'list_markers',
     'List all time markers in the project. Returns marker names and indices.',
     {},
-    async () => {
-      try {
-        const result = await connection.executeCommand('playlist.list_markers', {});
-
-        if (!result.success) {
-          return {
-            content: [{ type: 'text', text: `Failed to list markers: ${JSON.stringify(result)}` }],
-            isError: true,
-          };
-        }
-
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text', text: `Error listing markers: ${message}` }],
-          isError: true,
-        };
-      }
-    },
+    () => runBridgeTool(connection, {
+      action: 'playlist.list_markers',
+      args: {},
+      describe: 'list markers',
+    }),
   );
 
   // ── add_marker ────────────────────────────────────────────────────────────
@@ -279,34 +167,12 @@ export function registerPlaylistTools(
     'add_marker',
     'Add a time marker at a specific bar or the current playhead position. Bar numbers are 1-indexed.',
     addMarkerSchema,
-    async ({ name, bar }) => {
-      try {
-        // Only include bar if defined
-        const params: { name: string; bar?: number } = { name };
-        if (bar !== undefined) {
-          params.bar = bar;
-        }
-
-        const result = await connection.executeCommand('playlist.add_marker', params);
-
-        if (!result.success) {
-          return {
-            content: [{ type: 'text', text: `Failed to add marker: ${JSON.stringify(result)}` }],
-            isError: true,
-          };
-        }
-
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text', text: `Error adding marker: ${message}` }],
-          isError: true,
-        };
-      }
-    },
+    (args) => runBridgeTool(connection, {
+      action: 'playlist.add_marker',
+      args,
+      buildParams: ({ name, bar }) => bar !== undefined ? { name, bar } : { name },
+      describe: 'add marker',
+    }),
   );
 
   // ── jump_to_marker ────────────────────────────────────────────────────────
@@ -380,31 +246,11 @@ export function registerPlaylistTools(
     'trigger_live_clip',
     'Trigger a live clip in Performance Mode. Track is 1-indexed, block is 0-indexed. Note: Performance Mode must be enabled in FL Studio for clips to play.',
     triggerLiveClipSchema,
-    async ({ track, block }) => {
-      try {
-        const result = await connection.executeCommand('playlist.trigger_clip', {
-          track,
-          block,
-        });
-
-        if (!result.success) {
-          return {
-            content: [{ type: 'text', text: `Failed to trigger live clip: ${JSON.stringify(result)}` }],
-            isError: true,
-          };
-        }
-
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text', text: `Error triggering live clip: ${message}` }],
-          isError: true,
-        };
-      }
-    },
+    (args) => runBridgeTool(connection, {
+      action: 'playlist.trigger_clip',
+      args,
+      describe: 'trigger live clip',
+    }),
   );
 
   // ── stop_live_clips ──────────────────────────────────────────────────────
@@ -418,30 +264,11 @@ export function registerPlaylistTools(
     'stop_live_clips',
     'Stop all live clips on a playlist track. Track is 1-indexed. Requires Performance Mode.',
     stopLiveClipsSchema,
-    async ({ track }) => {
-      try {
-        const result = await connection.executeCommand('playlist.stop_clips', {
-          track,
-        });
-
-        if (!result.success) {
-          return {
-            content: [{ type: 'text', text: `Failed to stop live clips: ${JSON.stringify(result)}` }],
-            isError: true,
-          };
-        }
-
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text', text: `Error stopping live clips: ${message}` }],
-          isError: true,
-        };
-      }
-    },
+    (args) => runBridgeTool(connection, {
+      action: 'playlist.stop_clips',
+      args,
+      describe: 'stop live clips',
+    }),
   );
 
   // ── get_live_status ──────────────────────────────────────────────────────
@@ -455,29 +282,10 @@ export function registerPlaylistTools(
     'get_live_status',
     'Get live clip status for a playlist track. Track is 1-indexed. Returns status indicating if clips are playing/scheduled. Requires Performance Mode.',
     getLiveStatusSchema,
-    async ({ track }) => {
-      try {
-        const result = await connection.executeCommand('playlist.get_live_status', {
-          track,
-        });
-
-        if (!result.success) {
-          return {
-            content: [{ type: 'text', text: `Failed to get live status: ${JSON.stringify(result)}` }],
-            isError: true,
-          };
-        }
-
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-          content: [{ type: 'text', text: `Error getting live status: ${message}` }],
-          isError: true,
-        };
-      }
-    },
+    (args) => runBridgeTool(connection, {
+      action: 'playlist.get_live_status',
+      args,
+      describe: 'get live status',
+    }),
   );
 }
