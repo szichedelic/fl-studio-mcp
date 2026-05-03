@@ -27,21 +27,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ConnectionManager } from '../bridge/connection.js';
 import { z } from 'zod';
-
-/**
- * Convert RGB hex string (#RRGGBB) to FL Studio BGR integer.
- * FL Studio uses BGR format (0x00BBGGRR).
- *
- * @param hex - RGB hex string (e.g., "#FF0000" for red)
- * @returns BGR integer value
- */
-function rgbHexToBgr(hex: string): number {
-  const clean = hex.replace('#', '');
-  const r = parseInt(clean.substring(0, 2), 16);
-  const g = parseInt(clean.substring(2, 4), 16);
-  const b = parseInt(clean.substring(4, 6), 16);
-  return (b << 16) | (g << 8) | r;
-}
+import { rgbHexToBgr, RGB_HEX_RE } from '../util/color.js';
 
 /**
  * Register playlist track control tools with the MCP server.
@@ -208,7 +194,7 @@ export function registerPlaylistTools(
   const setColorSchema = {
     track: z.number().int().min(1)
       .describe('Playlist track index (1-indexed, first track = 1)'),
-    color: z.string()
+    color: z.string().regex(RGB_HEX_RE, 'Color must be #RRGGBB or RRGGBB hex')
       .describe("Color as RGB hex string (e.g., '#FF0000' for red, '#00FF00' for green)"),
   };
 

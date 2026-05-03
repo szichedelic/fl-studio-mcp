@@ -15,21 +15,7 @@ import type { ConnectionManager } from '../bridge/connection.js';
 import { z } from 'zod';
 import { paramCache } from '../plugins/param-cache.js';
 import { shadowState } from '../plugins/shadow-state.js';
-
-/**
- * Convert RGB hex string (#RRGGBB) to FL Studio BGR integer.
- * FL Studio uses BGR format (0x00BBGGRR).
- *
- * @param hex - RGB hex string (e.g., "#FF0000" for red)
- * @returns BGR integer value
- */
-function rgbHexToBgr(hex: string): number {
-  const clean = hex.replace('#', '');
-  const r = parseInt(clean.substring(0, 2), 16);
-  const g = parseInt(clean.substring(2, 4), 16);
-  const b = parseInt(clean.substring(4, 6), 16);
-  return (b << 16) | (g << 8) | r;
-}
+import { rgbHexToBgr, RGB_HEX_RE } from '../util/color.js';
 
 /**
  * Convert level input to FL Studio normalized value (0.0-1.0).
@@ -282,7 +268,7 @@ export function registerMixerTools(
   const setColorSchema = {
     track: z.number().int().min(0)
       .describe('Mixer track index (0=Master, 1+=insert tracks)'),
-    color: z.string()
+    color: z.string().regex(RGB_HEX_RE, 'Color must be #RRGGBB or RRGGBB hex')
       .describe('Color as RGB hex string (e.g., "#FF0000" for red, "#00FF00" for green)'),
   };
 
