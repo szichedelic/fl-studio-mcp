@@ -59,6 +59,27 @@ except ImportError:
 from protocol.commands import register_handler
 
 
+def _beats_per_bar() -> int:
+    """
+    Read the project's beats-per-bar from FL Studio.
+
+    PPB (pulses per bar) divided by PPQ (pulses per quarter) gives beats-per-bar
+    that respects the actual time signature. Falls back to 4 if either query
+    fails — matches the previous hardcoded behavior so callers never explode.
+    """
+    try:
+        if general is None:
+            return 4
+        ppb = general.getRecPPB()
+        ppq = general.getRecPPQ()
+        if ppq and ppb:
+            beats = ppb // ppq
+            return beats if beats > 0 else 4
+    except Exception:
+        pass
+    return 4
+
+
 def _validate_playlist_track(index: int) -> str | None:
     """
     Validate playlist track index is in valid range.
@@ -410,14 +431,15 @@ def handle_playlist_add_marker(params: Dict[str, Any]) -> Dict[str, Any]:
         bar = params.get('bar')
 
         ppq = general.getRecPPQ()
+        bpb = _beats_per_bar()
 
         if bar is not None:
-            # Convert bar to ticks (assuming 4/4 time)
-            # Bar is 1-indexed, so bar 1 = tick 0
+            # Convert bar to ticks using the actual time signature, not 4/4.
+            # Bar is 1-indexed, so bar 1 = tick 0.
             bar = int(bar)
             if bar < 1:
                 return {'success': False, 'error': 'Bar must be >= 1 (1-indexed)'}
-            ticks = (bar - 1) * 4 * ppq
+            ticks = (bar - 1) * bpb * ppq
         else:
             # Use current playback position
             ticks = transport.getSongPos(2)  # SONGLENGTH_ABSTICKS = 2
@@ -425,8 +447,8 @@ def handle_playlist_add_marker(params: Dict[str, Any]) -> Dict[str, Any]:
         # Add the marker
         arrangement.addAutoTimeMarker(ticks, name)
 
-        # Calculate bar number for response
-        calculated_bar = (ticks // (4 * ppq)) + 1 if ppq else None
+        # Calculate bar number for response (consistent with the bpb used above).
+        calculated_bar = (ticks // (bpb * ppq)) + 1 if ppq else None
 
         return {
             'success': True,
@@ -443,13 +465,18 @@ def handle_playlist_jump_to_marker(params: Dict[str, Any]) -> Dict[str, Any]:
     """
     Jump to a marker by name or index.
 
-    NOTE: FL Studio's jumpToMarker(delta, select) uses RELATIVE delta (+1=next, -1=prev),
-    not absolute index. This handler finds the marker by name/index, then uses the
-    relative navigation as a best-effort approach.
+    FL Studio's jumpToMarker(delta, select) only supports RELATIVE navigation,
+    so we synthesise an absolute jump in two steps:
+      1. Walk backwards far enough to land on the first marker (delta=-9999).
+      2. Step forward by the target index (delta=+1, target_index times).
+
+    Name matching prefers an exact case-insensitive match; if none exists, it
+    falls back to the first substring match (and reports it as ambiguous when
+    more than one matches).
 
     Args:
         params: {
-            name (str, optional): Marker name to find (case-insensitive partial match)
+            name (str, optional): Marker name to find
             index (int, optional): Marker index (0-indexed) to find
         }
         At least one of name or index must be provided.
@@ -458,7 +485,8 @@ def handle_playlist_jump_to_marker(params: Dict[str, Any]) -> Dict[str, Any]:
         dict: {
             success: True,
             marker: str (found marker name),
-            index: int (found marker index)
+            index: int (found marker index),
+            ambiguous: bool (true if name matched multiple markers)
         }
     """
     try:
@@ -471,45 +499,60 @@ def handle_playlist_jump_to_marker(params: Dict[str, Any]) -> Dict[str, Any]:
         if name is None and index is None:
             return {'success': False, 'error': 'Must provide either name or index'}
 
-        # Find the marker by iterating
-        target_index = None
-        target_name = None
-        i = 0
+        target_index_param = None
+        if index is not None:
+            try:
+                target_index_param = int(index)
+            except (TypeError, ValueError):
+                return {'success': False, 'error': f'Invalid index: {index!r}'}
 
+        # Walk every marker once so we can match by name and bound the
+        # forward-step count for an index-based jump.
+        markers = []  # list of (i, name)
+        i = 0
         while True:
             marker_name = arrangement.getMarkerName(i)
-            if not marker_name:  # Empty string = no more markers
+            if not marker_name:
                 break
-
-            # Check if this marker matches our search criteria
-            if name is not None and name.lower() in marker_name.lower():
-                target_index = i
-                target_name = marker_name
-                break
-            elif index is not None and i == int(index):
-                target_index = i
-                target_name = marker_name
-                break
-
+            markers.append((i, marker_name))
             i += 1
-            if index > 999:  # Safety limit
+            if i > 999:  # Safety bound on the iterator itself
                 break
 
-        if target_index is None:
-            if name is not None:
-                return {'success': False, 'error': f'Marker "{name}" not found'}
-            else:
-                return {'success': False, 'error': f'No marker at index {index}'}
+        target_index = None
+        target_name = None
+        ambiguous = False
 
-        # Use jumpToMarker to navigate
-        # Note: This uses relative navigation which is imperfect for absolute jumps
-        # Jump forward to first marker, then user can use this as a starting point
-        arrangement.jumpToMarker(1, True)  # Jump to next marker, select it
+        if target_index_param is not None:
+            for idx, m_name in markers:
+                if idx == target_index_param:
+                    target_index = idx
+                    target_name = m_name
+                    break
+            if target_index is None:
+                return {'success': False, 'error': f'No marker at index {target_index_param}'}
+        else:
+            needle = str(name).lower()
+            exact = [(idx, m_name) for idx, m_name in markers if m_name.lower() == needle]
+            if exact:
+                target_index, target_name = exact[0]
+            else:
+                substr = [(idx, m_name) for idx, m_name in markers if needle in m_name.lower()]
+                if not substr:
+                    return {'success': False, 'error': f'Marker "{name}" not found'}
+                target_index, target_name = substr[0]
+                ambiguous = len(substr) > 1
+
+        # Absolute jump: go to the first marker, then step forward.
+        arrangement.jumpToMarker(-9999, True)
+        for _ in range(target_index):
+            arrangement.jumpToMarker(1, True)
 
         return {
             'success': True,
             'marker': target_name,
-            'index': target_index
+            'index': target_index,
+            'ambiguous': ambiguous,
         }
 
     except Exception as e:

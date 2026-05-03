@@ -165,13 +165,16 @@ def handle_project_set_position(params: Dict[str, Any]) -> Dict[str, Any]:
 
         # Support multiple input formats
         if 'bars' in params:
-            # Convert bars to absolute ticks
-            # ticks = (bars - 1) * PPQ * beats_per_bar
+            # Convert bars to absolute ticks using the actual time signature
+            # (PPB / PPQ gives beats-per-bar that respects 3/4, 6/8, etc.)
             ppq = general.getRecPPQ()
+            ppb = general.getRecPPB()
+            bpb = (ppb // ppq) if (ppq and ppb) else 4
+            if bpb <= 0:
+                bpb = 4
             bars = int(params['bars'])
-            # Assuming 4/4 time (4 beats per bar)
-            # bars are 1-indexed (bar 1 = tick 0)
-            abs_ticks = (bars - 1) * ppq * 4
+            # Bars are 1-indexed (bar 1 = tick 0).
+            abs_ticks = (bars - 1) * ppq * bpb
             transport.setSongPos(abs_ticks, 2)  # Mode 2 = absolute ticks
         elif 'ticks' in params:
             transport.setSongPos(int(params['ticks']), 2)  # Mode 2 = absolute ticks
